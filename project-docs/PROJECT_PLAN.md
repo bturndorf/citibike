@@ -7,7 +7,7 @@
 - **Database**: Railway PostgreSQL (included)
 - **Backend**: Python FastAPI on Railway
 - **Frontend**: Next.js deployed to Railway
-- **Deployment**: Simple git push (no CI/CD needed)
+- **Deployment**: Simple git push (no complex CI/CD needed)
 
 ## 2. Detailed Task Breakdown (MVP)
 
@@ -50,6 +50,7 @@
 3. **Environment Configuration**
    - Set up environment variables
    - Configure local vs production settings
+   - Set up Railway environment variables
 
 **Deliverables:**
 - Complete project structure
@@ -193,25 +194,28 @@
 - Test results
 - Bug fixes
 
-#### Deployment & Documentation
+#### Railway Deployment & Documentation
 **Tasks:**
-1. **Production Deployment**
+1. **Production Deployment to Railway**
    - Deploy frontend to Railway
-   - Configure production environment
+   - Configure production environment variables
+   - Set up Railway domains
    - Test production deployment
+   - Verify database connections in production
 
 2. **Documentation**
    - Create user documentation
    - Write technical documentation
-   - Create deployment guide
+   - Create Railway deployment guide
+   - Document environment variable setup
 
 3. **Final Testing & Launch**
-   - Production testing
+   - Production testing on Railway
    - User acceptance testing
    - Launch preparation
 
 **Deliverables:**
-- Production-ready application
+- Production-ready application on Railway
 - Complete documentation
 - Launch-ready system
 
@@ -259,7 +263,7 @@
    - Define critical test scenarios (see section 7.1)
    - Set up testing framework (Jest/React Testing Library for frontend, pytest for backend)
    - Implement automated tests for core functionality
-   - Add CI/CD pipeline for test automation
+   - Add simple test automation (no complex CI/CD for MVP)
 
 **Deliverables:**
 - Simplified single-route application
@@ -267,7 +271,7 @@
 - Working stations combobox with search
 - Verified real data usage
 - Comprehensive test suite
-- Automated testing pipeline
+- Simple test automation
 
 ## 3. Simplified Technical Architecture
 
@@ -279,7 +283,29 @@
 - **Maps**: Mapbox or Google Maps API (future enhancement)
 - **Charts**: Chart.js or Recharts
 
-### 3.2 Simplified Database Schema
+### 3.2 Railway Deployment Architecture
+```
+GitHub Repository
+       ↓
+   Railway.app
+       ↓
+┌─────────────────┐
+│   Frontend      │  Next.js app
+│   (Railway)     │
+└─────────────────┘
+       ↓
+┌─────────────────┐
+│   Backend       │  FastAPI app
+│   (Railway)     │
+└─────────────────┘
+       ↓
+┌─────────────────┐
+│   PostgreSQL    │  Railway database
+│   (Railway)     │
+└─────────────────┘
+```
+
+### 3.3 Simplified Database Schema
 ```sql
 -- Stations table
 CREATE TABLE stations (
@@ -306,7 +332,7 @@ CREATE INDEX idx_trips_stations ON trips(start_station_id, end_station_id);
 CREATE INDEX idx_trips_time ON trips(started_at);
 ```
 
-### 3.3 API Endpoints (MVP)
+### 3.4 API Endpoints (MVP)
 ```
 GET /api/stations - List all stations
 GET /api/probability - Calculate encounter probability
@@ -314,53 +340,99 @@ POST /api/calculate - Submit calculation parameters
 GET /api/health - Health check
 ```
 
-## 4. MVP Risk Mitigation
+## 4. Railway Deployment Guide
 
-### 4.1 Technical Risks
+### 4.1 Initial Setup
+1. **Create Railway Account**
+   - Sign up at railway.app
+   - Connect GitHub repository
+   - Create new project
+
+2. **Add Services**
+   - Add PostgreSQL service for database
+   - Add Python service for backend
+   - Add Node.js service for frontend
+
+3. **Configure Environment Variables**
+   - Set DATABASE_URL for PostgreSQL connection
+   - Set API keys and secrets
+   - Configure production settings
+
+### 4.2 Deployment Process
+1. **Backend Deployment**
+   ```bash
+   # Deploy backend to Railway
+   git add .
+   git commit -m "feat(backend): deploy to Railway"
+   git push origin main
+   ```
+
+2. **Frontend Deployment**
+   - Railway automatically detects Next.js
+   - Configure build settings in Railway dashboard
+   - Set environment variables for API endpoints
+
+3. **Database Setup**
+   - Run migrations on Railway PostgreSQL
+   - Load initial data
+   - Verify connections
+
+### 4.3 Railway-Specific Considerations
+- **Auto-deployment**: Railway deploys on git push
+- **Environment variables**: Set in Railway dashboard
+- **Domains**: Railway provides custom domains
+- **Scaling**: Railway handles basic scaling automatically
+- **Monitoring**: Basic monitoring included
+
+## 5. MVP Risk Mitigation
+
+### 5.1 Technical Risks
 - **Data Processing**: Start with smaller dataset (3 months)
 - **Performance**: Use simple probability model initially
 - **Deployment**: Railway handles most complexity
+- **Database**: Railway PostgreSQL is managed and reliable
 
-### 4.2 Business Risks
+### 5.2 Business Risks
 - **User Adoption**: Focus on core functionality
 - **Data Quality**: Implement robust data validation
 
-## 5. MVP Success Criteria
+## 6. MVP Success Criteria
 
-### 5.1 Technical Success
-- Application runs without errors
+### 6.1 Technical Success
+- Application runs without errors on Railway
 - Probability calculations work correctly
 - Users can input parameters and see results
 - Simple deployment process works reliably
+- Database connections are stable
 
-### 5.2 User Success
+### 6.2 User Success
 - Users understand how to use the app
 - Results are presented clearly
 - App provides value to CitiBike users
 
-### 5.3 Business Success
+### 6.3 Business Success
 - App gains initial user traction
 - Positive feedback from users
 - Foundation for future enhancements
 
-## 6. Post-MVP Enhancements
+## 7. Post-MVP Enhancements
 
-### 6.1 When to Add Complexity
+### 7.1 When to Add Complexity
 - **More than 50 daily users**: Add caching
 - **Database performance issues**: Optimize queries
 - **Advanced features needed**: Add user accounts
-- **Scale requirements**: Move to AWS
+- **Scale requirements**: Consider AWS migration
 - **Map-based station selection**: Add interactive map for station selection
 
-### 6.2 Future Features
+### 7.2 Future Features
 - Advanced statistical modeling
 - Real-time data integration
 - Mobile app version
 - Social features
 
-## 7. Test Suite Planning
+## 8. Test Suite Planning
 
-### 7.1 Critical Test Scenarios
+### 8.1 Critical Test Scenarios
 
 #### Frontend Tests (React/Next.js)
 1. **Component Rendering Tests**
@@ -405,7 +477,7 @@ GET /api/health - Health check
    - Complete user journey from station selection to results
    - Data flows correctly between frontend and backend
    - Real CitiBike data is used in calculations
-   - Application works in production environment
+   - Application works in production environment on Railway
 
 2. **Performance Tests**
    - Application loads within acceptable time limits
@@ -413,11 +485,11 @@ GET /api/health - Health check
    - Probability calculations complete in reasonable time
    - Memory usage remains stable
 
-### 7.2 Test Implementation Strategy
+### 8.2 Test Implementation Strategy
 - **Frontend**: Jest + React Testing Library
 - **Backend**: pytest + FastAPI TestClient
 - **E2E**: Playwright or Cypress
-- **CI/CD**: GitHub Actions for automated testing
+- **Simple Automation**: Basic test scripts (no complex CI/CD for MVP)
 - **Coverage**: Aim for 80%+ code coverage on critical paths
 
-This simplified MVP approach focuses on getting a working application quickly with minimal infrastructure complexity. Railway provides a simple deployment platform that eliminates the need for complex AWS setup, CI/CD pipelines, or advanced monitoring systems. 
+This simplified MVP approach focuses on getting a working application quickly with minimal infrastructure complexity. Railway provides a simple deployment platform that eliminates the need for complex AWS setup, CI/CD pipelines, or advanced monitoring systems. The deployment process is as simple as pushing to git, making it ideal for rapid development and iteration. 

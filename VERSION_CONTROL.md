@@ -2,6 +2,23 @@
 
 This document outlines the version control standards and workflow for the CitiBike Rider Probability Application.
 
+## GitHub Repository Setup
+
+### Connect to GitHub Repository
+
+After creating a new repository on GitHub at [https://github.com/new](https://github.com/new), run these commands:
+
+```bash
+# Add the remote repository
+git remote add origin https://github.com/bturndorf/CitiBike.git
+
+# Push the main branch to GitHub
+git push -u origin main
+
+# Push the develop branch
+git push -u origin develop
+```
+
 ## Git Workflow
 
 ### Branch Strategy
