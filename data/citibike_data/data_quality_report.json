@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-06-09T16:18:04.624473",
+  "trip_data_analysis": [
+    {
+      "file": "../data/citibike_data/202503-citibike-tripdata.csv.zip",
+      "rows": 3168271,
+      "columns": [
+        "ride_id",
+        "rideable_type",
+        "started_at",
+        "ended_at",
+        "start_station_name",
+        "start_station_id",
+        "end_station_name",
+        "end_station_id",
+        "start_lat",
+        "start_lng",
+        "end_lat",
+        "end_lng",
+        "member_casual"
+      ],
+      "missing_data": {
+        "ride_id": 0,
+        "rideable_type": 0,
+        "started_at": 0,
+        "ended_at": 0,
+        "start_station_name": 1053,
+        "start_station_id": 1053,
+        "end_station_name": 8069,
+        "end_station_id": 8454,
+        "start_lat": 0,
+        "start_lng": 0,
+        "end_lat": 527,
+        "end_lng": 527,
+        "member_casual": 0
+      },
+      "data_types": {
+        "ride_id": 
