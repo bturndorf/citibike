@@ -23,11 +23,13 @@ class CitiBikeProbabilityCalculator:
         
     def load_station_statistics(self) -> Dict:
         """Load and cache station statistics from database"""
+        logger.info("Starting load_station_statistics")
         if self.station_stats:
+            logger.info(f"Using cached station stats for {len(self.station_stats)} stations")
             return self.station_stats
             
         try:
-            # Get station statistics - SQLite compatible version
+            # Get station statistics - PostgreSQL compatible version
             query = text("""
                 SELECT 
                     s.station_id,
@@ -36,13 +38,14 @@ class CitiBikeProbabilityCalculator:
                     s.longitude,
                     COUNT(t.id) as total_trips,
                     COUNT(DISTINCT t.bike_id) as unique_bikes,
-                    AVG((julianday(t.ended_at) - julianday(t.started_at)) * 24 * 60) as avg_trip_duration
+                    AVG(EXTRACT(EPOCH FROM (t.ended_at - t.started_at)) / 60) as avg_trip_duration
                 FROM stations s
                 LEFT JOIN trips t ON s.station_id = t.start_station_id
                 GROUP BY s.station_id, s.name, s.latitude, s.longitude
                 ORDER BY total_trips DESC
             """)
             
+            logger.info("Executing station statistics query")
             result = self.db_session.execute(query)
             stations = []
             
@@ -59,6 +62,7 @@ class CitiBikeProbabilityCalculator:
             
             self.station_stats = {s['station_id']: s for s in stations}
             logger.info(f"Loaded statistics for {len(stations)} stations")
+            logger.info(f"Sample station IDs: {list(self.station_stats.keys())[:5]}")
             return self.station_stats
             
         except Exception as e:
@@ -79,66 +83,87 @@ class CitiBikeProbabilityCalculator:
         Returns:
             Dictionary with probability calculation results
         """
+        logger.info(f"Starting probability calculation for station {home_station_id}, frequency {riding_frequency}, pattern {time_pattern}")
         try:
             # Load station statistics
             station_stats = self.load_station_statistics()
+            logger.info(f"Available station IDs: {list(station_stats.keys())[:10]}")
+            logger.info(f"Looking for station ID: {home_station_id}")
             
             if home_station_id not in station_stats:
+                logger.error(f"Station {home_station_id} not found in database")
+                logger.error(f"Available stations: {list(station_stats.keys())[:20]}")
                 raise ValueError(f"Station {home_station_id} not found in database")
             
             home_station = station_stats[home_station_id]
+            logger.info(f"Found home station: {home_station}")
             
             # Get bike movement patterns for the home station
+            logger.info("Getting bike movement patterns")
             bike_patterns = self._get_bike_movement_patterns(home_station_id, time_pattern)
+            logger.info(f"Bike patterns: {bike_patterns}")
             
             # Calculate probability using multiple factors
+            logger.info("Calculating encounter probability")
             probability = self._calculate_encounter_probability(
                 home_station, bike_patterns, riding_frequency, time_pattern
             )
+            logger.info(f"Calculated probability: {probability}")
             
             # Calculate confidence interval
+            logger.info("Calculating confidence interval")
             confidence_interval = self._calculate_confidence_interval(probability, home_station)
             
             # Generate explanation
+            logger.info("Generating explanation")
             explanation = self._generate_explanation(
                 probability, home_station, bike_patterns, riding_frequency, time_pattern
             )
             
-            return {
+            result = {
                 'probability': probability,
                 'confidence_interval': confidence_interval,
                 'explanation': explanation,
                 'station_info': home_station,
                 'bike_patterns': bike_patterns
             }
+            logger.info(f"Final result: {result}")
+            return result
             
         except Exception as e:
             logger.error(f"Error calculating probability: {e}")
+            logger.error(f"Exception type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise
     
     def _get_bike_movement_patterns(self, station_id: str, time_pattern: str) -> Dict:
         """Get bike movement patterns for a specific station and time pattern"""
+        logger.info(f"Getting bike movement patterns for station {station_id}, pattern {time_pattern}")
         try:
-            # Build time filter based on pattern - SQLite compatible
+            # Build time filter based on pattern - PostgreSQL compatible
             time_filter = ""
             if time_pattern == "weekday":
-                time_filter = "AND CAST(strftime('%w', t.started_at) AS INTEGER) BETWEEN 1 AND 5"
+                time_filter = "AND EXTRACT(DOW FROM t.started_at) BETWEEN 1 AND 5"
             elif time_pattern == "weekend":
-                time_filter = "AND CAST(strftime('%w', t.started_at) AS INTEGER) IN (0, 6)"
+                time_filter = "AND EXTRACT(DOW FROM t.started_at) IN (0, 6)"
             
-            query = text(f"""
+            query_text = f"""
                 SELECT 
                     t.bike_id,
                     COUNT(*) as trip_count,
-                    AVG((julianday(t.ended_at) - julianday(t.started_at)) * 24 * 60) as avg_duration,
+                    AVG(EXTRACT(EPOCH FROM (t.ended_at - t.started_at)) / 60) as avg_duration,
                     COUNT(DISTINCT t.end_station_id) as unique_destinations
                 FROM trips t
                 WHERE t.start_station_id = :station_id {time_filter}
                 GROUP BY t.bike_id
                 ORDER BY trip_count DESC
                 LIMIT 100
-            """)
+            """
+            logger.info(f"Executing bike patterns query: {query_text}")
+            logger.info(f"Query parameters: station_id={station_id}")
             
+            query = text(query_text)
             result = self.db_session.execute(query, {'station_id': station_id})
             patterns = []
             
@@ -149,6 +174,8 @@ class CitiBikeProbabilityCalculator:
                     'avg_duration': row.avg_duration or 0,
                     'unique_destinations': row.unique_destinations
                 })
+            
+            logger.info(f"Found {len(patterns)} bike patterns")
             
             # Calculate summary statistics
             if patterns:
@@ -163,6 +190,7 @@ class CitiBikeProbabilityCalculator:
                     'patterns': patterns[:10]  # Top 10 bikes
                 }
             else:
+                logger.warning(f"No bike patterns found for station {station_id}")
                 return {
                     'total_bikes_analyzed': 0,
                     'avg_trips_per_bike': 0,
@@ -172,18 +200,21 @@ class CitiBikeProbabilityCalculator:
                 
         except Exception as e:
             logger.error(f"Error getting bike movement patterns: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {}
     
     def _calculate_bike_return_rate(self, station_id: str, time_pattern: str) -> float:
         """Calculate the rate at which bikes return to the same station"""
+        logger.info(f"Calculating bike return rate for station {station_id}, pattern {time_pattern}")
         try:
             time_filter = ""
             if time_pattern == "weekday":
-                time_filter = "AND CAST(strftime('%w', t1.started_at) AS INTEGER) BETWEEN 1 AND 5"
+                time_filter = "AND EXTRACT(DOW FROM t1.started_at) BETWEEN 1 AND 5"
             elif time_pattern == "weekend":
-                time_filter = "AND CAST(strftime('%w', t1.started_at) AS INTEGER) IN (0, 6)"
+                time_filter = "AND EXTRACT(DOW FROM t1.started_at) IN (0, 6)"
             
-            query = text(f"""
+            query_text = f"""
                 SELECT 
                     COUNT(DISTINCT t1.bike_id) as bikes_returning,
                     COUNT(DISTINCT t1.bike_id) as total_bikes
@@ -194,17 +225,23 @@ class CitiBikeProbabilityCalculator:
                     WHERE t2.bike_id = t1.bike_id 
                     AND t2.end_station_id = :station_id
                     AND t2.started_at > t1.ended_at
-                    AND t2.started_at <= datetime(t1.ended_at, '+7 days')
+                    AND t2.started_at <= t1.ended_at + INTERVAL '7 days'
                 )
-            """)
+            """
+            logger.info(f"Executing bike return rate query: {query_text}")
             
+            query = text(query_text)
             result = self.db_session.execute(query, {'station_id': station_id})
             row = result.fetchone()
             
             if row and row.total_bikes > 0:
-                return row.bikes_returning / row.total_bikes
-            return 0.0
-            
+                return_rate = row.bikes_returning / row.total_bikes
+                logger.info(f"Bike return rate: {return_rate} ({row.bikes_returning}/{row.total_bikes})")
+                return return_rate
+            else:
+                logger.warning(f"No bike return data found for station {station_id}")
+                return 0.0
+                
         except Exception as e:
             logger.error(f"Error calculating bike return rate: {e}")
             return 0.0

@@ -89,18 +89,23 @@ def load_data_to_railway_postgres():
             stations = stations_data.get('data', {}).get('stations', [])
             logger.info(f"📊 Found {len(stations)} stations")
             
-            # Insert stations
+            # Insert stations in a single transaction
             with engine.connect() as conn:
                 for station in stations:
-                    conn.execute(text("""
-                        INSERT INTO stations (station_id, name, latitude, longitude)
-                        VALUES (:station_id, :name, :latitude, :longitude)
-                    """), {
-                        'station_id': station['station_id'],
-                        'name': station['name'],
-                        'latitude': station['lat'],
-                        'longitude': station['lon']
-                    })
+                    try:
+                        conn.execute(text("""
+                            INSERT INTO stations (station_id, name, latitude, longitude)
+                            VALUES (:station_id, :name, :latitude, :longitude)
+                        """), {
+                            'station_id': station['station_id'],
+                            'name': station['name'],
+                            'latitude': station['lat'],
+                            'longitude': station['lon']
+                        })
+                    except Exception as e:
+                        logger.warning(f"Skipping duplicate station {station['station_id']}: {e}")
+                        continue
+                
                 conn.commit()
             
             logger.info(f"✅ Successfully loaded {len(stations)} stations")
@@ -108,7 +113,7 @@ def load_data_to_railway_postgres():
             logger.error(f"❌ Station data file not found: {stations_file}")
             return False
         
-        # Load trip data
+        # Load trip data with better transaction management
         trip_file = "../data/citibike_data/202503-citibike-tripdata.csv.zip"
         if os.path.exists(trip_file):
             logger.info("🚲 Loading trip data...")
@@ -118,30 +123,38 @@ def load_data_to_railway_postgres():
                 csv_filename = zip_ref.namelist()[0]
                 with zip_ref.open(csv_filename) as csv_file:
                     # Read in chunks to handle large file
-                    chunk_size = 5000
+                    chunk_size = 1000  # Smaller chunks for better transaction management
                     total_trips = 0
                     
                     for chunk_num, chunk in enumerate(pd.read_csv(csv_file, chunksize=chunk_size)):
+                        # Use a single connection for each chunk
                         with engine.connect() as conn:
-                            for _, row in chunk.iterrows():
-                                try:
-                                    conn.execute(text("""
-                                        INSERT INTO trips (bike_id, start_station_id, end_station_id, started_at, ended_at)
-                                        VALUES (:bike_id, :start_station_id, :end_station_id, :started_at, :ended_at)
-                                    """), {
-                                        'bike_id': str(row.get('ride_id', 'unknown')),
-                                        'start_station_id': str(row.get('start_station_id', '')),
-                                        'end_station_id': str(row.get('end_station_id', '')),
-                                        'started_at': row.get('started_at', ''),
-                                        'ended_at': row.get('ended_at', '')
-                                    })
-                                    total_trips += 1
-                                    
-                                except Exception as e:
-                                    logger.warning(f"Skipping invalid trip row: {e}")
-                                    continue
-                            
-                            conn.commit()
+                            try:
+                                for _, row in chunk.iterrows():
+                                    try:
+                                        conn.execute(text("""
+                                            INSERT INTO trips (bike_id, start_station_id, end_station_id, started_at, ended_at)
+                                            VALUES (:bike_id, :start_station_id, :end_station_id, :started_at, :ended_at)
+                                        """), {
+                                            'bike_id': str(row.get('ride_id', 'unknown')),
+                                            'start_station_id': str(row.get('start_station_id', '')),
+                                            'end_station_id': str(row.get('end_station_id', '')),
+                                            'started_at': row.get('started_at', ''),
+                                            'ended_at': row.get('ended_at', '')
+                                        })
+                                        total_trips += 1
+                                        
+                                    except Exception as e:
+                                        logger.warning(f"Skipping invalid trip row: {e}")
+                                        continue
+                                
+                                # Commit the chunk
+                                conn.commit()
+                                
+                            except Exception as e:
+                                logger.error(f"Error processing chunk {chunk_num}: {e}")
+                                conn.rollback()
+                                continue
                         
                         if chunk_num % 10 == 0:
                             logger.info(f"✅ Processed {total_trips} trips...")

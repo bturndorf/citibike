@@ -162,15 +162,19 @@ async def get_stations(db: Session = Depends(get_db)):
 async def calculate_probability_endpoint(request: ProbabilityRequest, db: Session = Depends(get_db)):
     """Calculate probability of encountering the same bike twice"""
     try:
-        logger.info(f"Probability calculation requested for station: {request.home_station_id}")
+        logger.info(f"Probability calculation requested")
+        logger.info(f"Request parameters: station_id={request.home_station_id}, frequency={request.riding_frequency}, pattern={request.time_pattern}")
         
         # Use the probability calculation module
+        logger.info("Calling calculate_probability function")
         result = calculate_probability(
             db_session=db,
             home_station_id=request.home_station_id,
             riding_frequency=request.riding_frequency,
             time_pattern=request.time_pattern
         )
+        
+        logger.info(f"Probability calculation completed successfully: {result}")
         
         return ProbabilityResponse(
             probability=result['probability'],
@@ -181,9 +185,13 @@ async def calculate_probability_endpoint(request: ProbabilityRequest, db: Sessio
         
     except ValueError as e:
         logger.error(f"Invalid request: {e}")
+        logger.error(f"Request parameters that caused error: station_id={request.home_station_id}, frequency={request.riding_frequency}, pattern={request.time_pattern}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error calculating probability: {e}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error during probability calculation")
 
 if __name__ == "__main__":
