@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+**/node_modules/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -24,6 +25,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+**/venv/
 env/
 ENV/
 env.bak/
@@ -52,6 +54,8 @@ pip-delete-this-directory.txt
 # Database
 *.db
 *.sqlite3
+backend/dev.db
+backend/*.db
 
 # IDE
 .vscode/
@@ -108,4 +112,10 @@ jspm_packages/
 
 # Data files (large CSV files)
 data/citibike_data/*.csv
-data/citibike_data/*.zip 
+data/citibike_data/*.zip
+
+# Large binary files and libraries
+*.dylib
+*.dll
+*.so
+*.node 
