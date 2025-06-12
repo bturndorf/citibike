@@ -1,0 +1,147 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Railway Database Inquiries
+
+Guidelines for connecting to and querying Railway PostgreSQL databases in this project.
+
+<rule>
+name: railway_database_inquiries
+description: Standards and procedures for connecting to Railway PostgreSQL database and performing queries
+filters:
+  # Match database-related queries or requests
+  - type: content
+    pattern: "(?i)(railway|postgres|database|sql|query|connect)"
+  # Match when user wants to check database state
+  - type: content
+    pattern: "(?i)(check|count|rows|data|loaded|verify)"
+
+actions:
+  - type: suggest
+    message: |
+      When working with Railway PostgreSQL database in this project, follow these EXACT steps:
+
+      ## IMMEDIATE ACTION REQUIRED: Get Database Connection String
+      
+      1. **Get Railway Variables** (ALWAYS do this first):
+         ```bash
+         railway variables
+         ```
+         Look for `DATABASE_PUBLIC_URL` or `DATABASE_URL` in the output.
+
+      2. **If no DATABASE_URL found, get it from Railway dashboard**:
+         - Go to Railway dashboard → Your project → PostgreSQL service
+         - Copy the connection string from the "Connect" tab
+         - It will look like: `postgresql://postgres:password@interchange.proxy.rlwy.net:44480/railway`
+
+      ## Connection Methods (Choose ONE):
+
+      ### Method 1: Python Script (RECOMMENDED)
+      ```python
+      from sqlalchemy import create_engine, text
+      import os
+      
+      # Get connection string from railway variables output
+      database_url = "postgresql://postgres:password@interchange.proxy.rlwy.net:44480/railway"
+      
+      # Create engine and test connection
+      engine = create_engine(database_url)
+      
+      with engine.connect() as conn:
+          # Your query here
+          result = conn.execute(text("SELECT COUNT(*) FROM trips"))
+          print(f"Trips count: {result.scalar():,}")
+      ```
+
+      ### Method 2: Railway CLI (if psql installed)
+      ```bash
+      # Select Postgres service
+      railway service
+      # Choose "Postgres" from the list
+      
+      # Connect directly
+      railway connect
+      ```
+
+      ### Method 3: Direct psql (if you have the connection string)
+      ```bash
+      psql "postgresql://postgres:password@interchange.proxy.rlwy.net:44480/railway"
+      ```
+
+      ## Common Queries for This Project:
+      ```sql
+      -- Check trips table count
+      SELECT COUNT(*) FROM trips;
+      
+      -- Check stations table count  
+      SELECT COUNT(*) FROM stations;
+      
+      -- Check unique bikes
+      SELECT COUNT(DISTINCT bike_id) FROM trips;
+      
+      -- Check date range
+      SELECT MIN(started_at), MAX(started_at) FROM trips;
+      
+      -- Check table structure
+      \d trips;
+      \d stations;
+      ```
+
+      ## Project-Specific Context:
+      - **Expected Data**: ~1.3M+ trips, ~2.2K stations
+      - **Tables**: `trips`, `stations`
+      - **Data Source**: CitiBike trip data loaded via `load_full_dataset.py`
+      - **Environment**: Uses `DATABASE_URL` environment variable
+
+      ## Troubleshooting Steps:
+      1. **Connection fails**: Check `railway variables` for correct URL
+      2. **No data**: Run `python backend/load_full_dataset.py`
+      3. **Service not found**: Use `railway service` to select Postgres service
+      4. **Permission denied**: Ensure you're connected to the right Railway project
+
+      ## IMPORTANT: Never ask for clarification - execute these steps directly:
+      1. Run `railway variables` to get connection string
+      2. Use the connection string in your Python script or CLI command
+      3. Execute your query immediately
+
+examples:
+  - input: "check how many rows are in the trips table"
+    output: |
+      ```bash
+      # First get the connection string
+      railway variables
+      ```
+      
+      ```python
+      # Then use it in a Python script
+      from sqlalchemy import create_engine, text
+      
+      # Use the DATABASE_URL from railway variables output
+      database_url = "postgresql://postgres:password@interchange.proxy.rlwy.net:44480/railway"
+      engine = create_engine(database_url)
+      
+      with engine.connect() as conn:
+          count = conn.execute(text("SELECT COUNT(*) FROM trips")).scalar()
+          print(f"Trips count: {count:,}")
+      ```
+
+  - input: "connect to railway database"
+    output: |
+      ```bash
+      # Get connection details first
+      railway variables
+      
+      # Then connect using the DATABASE_URL from the output
+      railway service
+      # Select "Postgres" service
+      
+      railway connect
+      ```
+
+metadata:
+  priority: high
+  version: 2.0
+  tags: ["railway", "postgres", "database", "citibike"]
+</rule>

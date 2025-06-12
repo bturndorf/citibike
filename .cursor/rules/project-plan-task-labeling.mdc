@@ -1,0 +1,90 @@
+---
+description: Refer to this rule when creating tasks in the project plan
+globs: 
+alwaysApply: false
+---
+<rule>
+name: project_plan_task_labeling
+description: Standards for labeling tasks in PROJECT_PLAN.md with sequential numbers for clear reference
+filters:
+  # Match PROJECT_PLAN.md file
+  - type: file_path
+    pattern: ".*PROJECT_PLAN\\.md$"
+  # Match content that contains task lists
+  - type: content
+    pattern: "(?s).*Tasks:.*"
+  # Match file modification events
+  - type: event
+    pattern: "file_modify"
+
+actions:
+  - type: suggest
+    message: |
+      When adding new tasks to PROJECT_PLAN.md:
+
+      1. Always label tasks with sequential numbers:
+         ```
+         **Tasks:**
+         1. First task description
+         2. Second task description
+         3. Third task description
+         ```
+
+      2. Use consistent numbering format:
+         - Start with 1 for each new task list
+         - Use Arabic numerals (1, 2, 3, not i, ii, iii)
+         - Follow with a period and space: "1. "
+         - Maintain sequential order even when adding tasks in the middle
+
+      3. For nested task lists, use hierarchical numbering:
+         ```
+         **Tasks:**
+         1. Main task
+           1.1. Sub-task A
+           1.2. Sub-task B
+         2. Another main task
+           2.1. Sub-task C
+         ```
+
+      4. When referring to tasks elsewhere in the document:
+         - Use the exact task number: "See Task 1.2 above"
+         - Be specific about which task you're referencing
+         - Update references if task numbers change
+
+      5. Benefits of sequential labeling:
+         - Clear reference points for discussions
+         - Easy to track progress
+         - Simple to refer to specific tasks
+         - Maintains document organization
+
+examples:
+  - input: |
+      **Tasks:**
+      - Set up database
+      - Create API endpoints
+      - Deploy application
+
+      # Should be:
+      **Tasks:**
+      1. Set up database
+      2. Create API endpoints
+      3. Deploy application
+    output: "Tasks properly labeled with sequential numbers"
+
+  - input: |
+      **Tasks:**
+      1. First task
+      3. Third task
+      # Missing task 2
+
+      # Should be:
+      **Tasks:**
+      1. First task
+      2. Second task
+      3. Third task
+    output: "Tasks numbered sequentially without gaps"
+
+metadata:
+  priority: medium
+  version: 1.0
+</rule>

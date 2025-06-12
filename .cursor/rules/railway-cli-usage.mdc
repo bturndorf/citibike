@@ -1,0 +1,183 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Railway CLI Usage Rules
+
+Rules for correct usage of Railway CLI commands and options.
+
+<rule>
+name: railway_cli_logs_usage
+description: Prevent usage of non-existent Railway CLI options and provide correct alternatives
+filters:
+  # Match any command that uses railway CLI
+  - type: command
+    pattern: "railway.*"
+  # Match content that mentions railway CLI
+  - type: content
+    pattern: "railway.*tail|railway.*--tail|railway.*-t"
+  # Match file modification events
+  - type: event
+    pattern: "file_modify"
+
+actions:
+  - type: reject
+    conditions:
+      - pattern: "railway.*--tail|railway.*-t|railway.*tail"
+        message: "Railway CLI does not have a 'tail' option. Use 'railway logs' instead with available options."
+
+  - type: suggest
+    message: |
+      Railway CLI Logs Usage:
+
+      The Railway CLI does NOT have a 'tail' option. Instead, use:
+
+      ```bash
+      # View logs from latest deployment
+      railway logs
+
+      # View logs from specific service
+      railway logs -s <SERVICE_NAME>
+
+      # View logs from specific environment
+      railway logs -e <ENVIRONMENT_NAME>
+
+      # View deployment logs
+      railway logs -d
+
+      # View build logs
+      railway logs -b
+
+      # View logs from specific deployment ID
+      railway logs <DEPLOYMENT_ID>
+
+      # Combine options
+      railway logs -s <SERVICE> -e <ENVIRONMENT> -d
+      ```
+
+      Available Railway CLI commands:
+      - `railway logs` - View deployment logs (NO tail option)
+      - `railway status` - Show project information
+      - `railway up` - Deploy project
+      - `railway down` - Remove latest deployment
+      - `railway variables` - Show environment variables
+      - `railway connect` - Connect to database shell
+      - `railway open` - Open project dashboard
+
+      For real-time log following, consider:
+      - Using Railway dashboard web interface
+      - Running `railway logs` in a separate terminal window
+      - Using Railway's web-based log viewer
+
+examples:
+  - input: |
+      # Incorrect - tail option doesn't exist
+      railway logs --tail
+      railway logs -t
+      railway logs --follow
+
+      # Correct alternatives
+      railway logs
+      railway logs -s backend
+      railway logs -e production
+      railway logs -d
+    output: "Use correct Railway CLI log viewing commands without tail option"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>
+
+<rule>
+name: railway_cli_general_usage
+description: General guidance for Railway CLI command usage and best practices
+filters:
+  # Match any command that uses railway CLI
+  - type: command
+    pattern: "railway.*"
+  # Match content that mentions railway CLI
+  - type: content
+    pattern: "railway.*"
+  # Match file modification events
+  - type: event
+    pattern: "file_modify"
+
+actions:
+  - type: suggest
+    message: |
+      Railway CLI Best Practices:
+
+      1. Always check available options with --help:
+         ```bash
+         railway --help
+         railway <command> --help
+         ```
+
+      2. Common workflow commands:
+         ```bash
+         # Link to existing project
+         railway link
+
+         # Deploy changes
+         railway up
+
+         # View logs
+         railway logs
+
+         # Check status
+         railway status
+
+         # View environment variables
+         railway variables
+
+         # Open dashboard
+         railway open
+         ```
+
+      3. Service-specific commands:
+         ```bash
+         # View logs for specific service
+         railway logs -s <service-name>
+
+         # Connect to database
+         railway connect
+
+         # SSH to service
+         railway ssh
+         ```
+
+      4. Environment management:
+         ```bash
+         # Switch environments
+         railway environment <env-name>
+
+         # View variables for environment
+         railway variables -e <env-name>
+         ```
+
+      5. Remember: Railway CLI is different from other tools:
+         - No 'tail' or 'follow' options for logs
+         - No 'ps' or 'top' commands
+         - Use web dashboard for advanced monitoring
+         - Commands are project/service focused
+
+examples:
+  - input: |
+      # Good Railway CLI usage
+      railway status
+      railway logs -s backend
+      railway up
+      railway variables
+
+      # Avoid these (they don't exist)
+      railway logs --tail
+      railway ps
+      railway top
+      railway follow
+    output: "Use correct Railway CLI commands and avoid non-existent options"
+
+metadata:
+  priority: medium
+  version: 1.0
+</rule>
