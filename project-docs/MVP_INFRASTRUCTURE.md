@@ -10,7 +10,7 @@
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### 1.2 MVP Infrastructure Choices
+### 1.2 MVP Infrastructure
 
 #### Option 1: Railway (Recommended for MVP)
 - **Frontend**: Deploy Next.js app directly to Railway
@@ -20,22 +20,6 @@
 - **Cost**: ~$5-10/month for MVP
 - **Pros**: Simple deployment, integrated database, good free tier
 - **Cons**: Less control than AWS
-
-#### Option 2: Render (Alternative)
-- **Frontend**: Static site hosting on Render
-- **Backend**: Python web service on Render
-- **Database**: Render PostgreSQL
-- **Cost**: ~$7-15/month for MVP
-- **Pros**: Good free tier, simple setup
-- **Cons**: Slightly more complex than Railway
-
-#### Option 3: Heroku (Classic Choice)
-- **Frontend**: Static site hosting
-- **Backend**: Python dyno
-- **Database**: Heroku Postgres
-- **Cost**: ~$7-25/month for MVP
-- **Pros**: Well-established, good documentation
-- **Cons**: Removed free tier, more expensive
 
 ## 2. Simplified MVP Setup
 
@@ -52,12 +36,12 @@
 3. No complex VPC or security groups needed
 
 #### Step 3: Backend Deployment
-1. Create `railway.json` configuration
-2. Railway auto-detects Python app
+1. Create `railway.json` configuration with Dockerfile builder
+2. Railway uses Dockerfile for Python app deployment
 3. Deploy with `git push`
 
 #### Step 4: Frontend Deployment
-1. Deploy Next.js app to Railway
+1. Deploy Next.js app to Railway (uses Nixpacks)
 2. Configure environment variables
 3. Get live URL automatically
 
@@ -177,6 +161,9 @@ citibike-mvp/
 │       └── Results.tsx     # Results display
 ├── data/
 │   └── citibike_data/      # Downloaded data files
+├── Dockerfile              # Backend deployment configuration
+├── railway.json            # Railway project configuration
+├── requirements.txt        # Root requirements for Docker build
 └── README.md
 ```
 
@@ -207,19 +194,7 @@ citibike-mvp/
 - Test end-to-end functionality
 - Deploy to production
 
-## 7. Cost Breakdown (MVP)
 
-### Railway (Recommended)
-- **Database**: $5/month (1GB storage)
-- **Backend**: $5/month (512MB RAM)
-- **Frontend**: Free (static hosting)
-- **Total**: ~$10/month
-
-### Render (Alternative)
-- **Database**: $7/month
-- **Backend**: $7/month
-- **Frontend**: Free
-- **Total**: ~$14/month
 
 ## 8. MVP Success Criteria
 
@@ -233,24 +208,3 @@ citibike-mvp/
 - Users understand how to use the app
 - Results are presented clearly
 - App provides value to CitiBike users
-
-### Business Success
-- App gains some user traction
-- Positive feedback from initial users
-- Foundation for future enhancements
-
-## 9. Future Scaling (When Needed)
-
-### When to Add Complexity
-- **More than 100 daily users**: Add caching
-- **Database performance issues**: Optimize queries
-- **Need for real-time data**: Add scheduled jobs
-- **Advanced features**: Add user accounts
-
-### Migration Path
-- Start with Railway MVP
-- Move to AWS when needed
-- Gradual feature addition
-- Maintain simple deployment process
-
-This simplified approach focuses on getting a working MVP quickly without the complexity of AWS, CI/CD, or advanced monitoring. We can always add these features later when the application proves successful and needs to scale. 
