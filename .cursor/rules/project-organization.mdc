@@ -1,0 +1,320 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Organization Rules
+
+Rules for maintaining clean project structure and organizing files appropriately.
+
+<rule>
+name: project_organization
+description: Standards for organizing files and cleaning up temporary files in the CitiBike project
+filters:
+  # Match any file creation or modification
+  - type: event
+    pattern: "file_create|file_modify"
+  # Match specific file types that need organization
+  - type: file_extension
+    pattern: "\\.(py|js|ts|json|md|txt|log|db|sh|env|dockerfile|procfile)$"
+  # Match temporary or test files
+  - type: content
+    pattern: "(test|temp|debug|sample|backup)"
+  # Match deployment and configuration files
+  - type: content
+    pattern: "(railway|docker|deploy|config|env)"
+  # Match test-related files
+  - type: file_path
+    pattern: ".*test.*\\.(py|js|ts|tsx|jsx)$"
+  - type: file_path
+    pattern: ".*\\.(spec|test)\\.(py|js|ts|tsx|jsx)$"
+
+actions:
+  - type: suggest
+    message: |
+      When creating or modifying files, follow these organization rules:
+
+      ## File Organization Guidelines
+
+      ### 1. Root Directory Cleanliness
+      - **Keep root clean**: Only essential project files should be in root
+      - **Move to appropriate folders**: Scripts, utilities, and temporary files belong in specific directories
+      - **Documentation**: Project-level docs go in `project-docs/`
+
+      ### 2. Directory Structure Standards
+
+      ```
+      PROJECT_ROOT/
+      ├── backend/                    # Backend application files
+      │   ├── main.py                 # Main FastAPI application
+      │   ├── models.py               # Database models
+      │   ├── probability.py          # Core probability calculations
+      │   ├── data_ingestion.py       # Data loading scripts
+      │   ├── railway.json            # Railway backend configuration
+      │   ├── Dockerfile              # Backend container configuration
+      │   ├── Procfile                # Railway process configuration
+      │   ├── requirements.txt        # Python dependencies
+      │   ├── env.example             # Environment variables template
+      │   ├── pytest.ini              # Pytest configuration
+      │   ├── run_backend_tests.py    # Backend test runner
+      │   └── tests/                  # Backend test files
+      │       ├── conftest.py         # Pytest configuration and fixtures
+      │       ├── test_*.py           # Unit tests
+      │       ├── test_api_endpoints.py # API endpoint tests
+      │       ├── test_probability_calculations.py # Probability tests
+      │       └── integration_*.py    # Integration tests
+      │
+      ├── frontend/                   # Frontend application files
+      │   ├── pages/                  # Next.js pages
+      │   ├── components/             # React components
+      │   ├── styles/                 # CSS/styling files
+      │   ├── package.json            # Node.js dependencies
+      │   ├── next.config.js          # Next.js configuration
+      │   ├── jest.config.js          # Jest configuration
+      │   ├── jest.setup.js           # Jest setup file
+      │   ├── __tests__/              # Frontend test files
+      │   │   ├── pages/              # Page component tests
+      │   │   ├── components/         # Component tests
+      │   │   └── integration/        # Integration tests
+      │   └── tests/                  # Alternative test directory
+      │
+      ├── utils/                      # Utility scripts and tools
+      │   ├── database_stats.py       # Database analysis tools
+      │   ├── data_processing.py      # Data cleaning/processing scripts
+      │   ├── deployment_scripts/     # Deployment and setup scripts
+      │   ├── testing_scripts/        # Testing utilities
+      │   └── test_data/              # Test data files
+      │       ├── sample_stations.json # Sample station data
+      │       ├── sample_trips.json   # Sample trip data
+      │       └── test_fixtures/      # Test fixture data
+      │
+      ├── data/                       # Data files and datasets
+      │   ├── raw/                    # Raw downloaded data
+      │   ├── processed/              # Cleaned/processed data
+      │   ├── backups/                # Database backups
+      │   ├── dev.db                  # Development database (if needed locally)
+      │   ├── test.db                 # Test database
+      │   └── samples/                # Sample datasets for testing
+      │
+      ├── project-docs/               # Project documentation
+      │   ├── PROJECT_PLAN.md         # Main project plan
+      │   ├── API_DOCS.md             # API documentation
+      │   ├── DEPLOYMENT.md           # Deployment guides
+      │   └── TESTING.md              # Testing documentation
+      │
+      ├── railway.json                # Root Railway project configuration
+      ├── Dockerfile                  # Root container configuration (if needed)
+      ├── requirements.txt            # Root Python dependencies (if needed)
+      ├── run_all_tests.py            # Root-level test runner
+      ├── README.md                   # Project readme
+      ├── .gitignore                  # Git ignore rules
+      └── .cursor/rules/              # Cursor rules (already organized)
+      ```
+
+      ### 3. Test File Organization Standards
+
+      **Backend Test Files:**
+      - **Location**: `backend/tests/` directory
+      - **Naming**: `test_*.py` or `*_test.py`
+      - **Configuration**: `backend/conftest.py` for fixtures
+      - **Test Runner**: `backend/run_backend_tests.py`
+      - **Coverage**: `backend/htmlcov/` (generated)
+      - **Test Data**: `backend/tests/test_data/` or `utils/test_data/`
+
+      **Frontend Test Files:**
+      - **Location**: `frontend/__tests__/` or `frontend/tests/`
+      - **Naming**: `*.test.{js,ts,tsx}` or `*.spec.{js,ts,tsx}`
+      - **Configuration**: `frontend/jest.config.js` and `frontend/jest.setup.js`
+      - **Test Runner**: `npm test` (configured in package.json)
+      - **Coverage**: `frontend/coverage/` (generated)
+      - **Test Data**: `frontend/__tests__/test_data/`
+
+      **Integration Test Files:**
+      - **Location**: `tests/` (root level) or `frontend/tests/integration/`
+      - **Naming**: `integration_*.py` or `*.e2e.test.{js,ts,tsx}`
+      - **Configuration**: `playwright.config.js` (root level)
+      - **Test Runner**: `npm run test:e2e`
+
+      **Test Configuration Files:**
+      - **Backend**: `backend/pytest.ini`, `backend/conftest.py`
+      - **Frontend**: `frontend/jest.config.js`, `frontend/jest.setup.js`
+      - **Integration**: `playwright.config.js` (root level)
+      - **Root Level**: `run_all_tests.py`, `.env.test`
+
+      ### 4. Test Data File Management
+
+      **Test Data Placement:**
+      - **Sample Data**: `utils/test_data/` or `data/samples/`
+      - **Test Fixtures**: `backend/tests/fixtures/` or `frontend/__tests__/fixtures/`
+      - **Test Databases**: `data/test.db` (SQLite) or separate PostgreSQL database
+      - **Test Environment Files**: `.env.test` in respective directories
+
+      **Test Data Naming Conventions:**
+      - Sample data: `sample_*.json`, `sample_*.csv`
+      - Test fixtures: `fixture_*.json`, `test_*.json`
+      - Test databases: `test.db`, `test_citibike` (PostgreSQL)
+      - Test environment: `.env.test`, `.env.testing`
+
+      **Test Data Isolation:**
+      - Test data should be separate from development data
+      - Use different database names/connections for tests
+      - Clean up test data after each test run
+      - Never use production data in tests
+
+      ### 5. Database File Management
+
+      **Database files placement:**
+      - **Development databases**: `data/dev.db` (not in root)
+      - **Test databases**: `data/test.db` or separate PostgreSQL database
+      - **Production databases**: Use Railway PostgreSQL (not local files)
+      - **Database backups**: `data/backups/` directory
+      - **Database schemas**: Keep in `backend/` with application code
+      - **Migration files**: `backend/alembic/` directory
+
+      **Current violations to fix:**
+      - Move `dev.db` from root to `data/` directory
+      - Create `data/backups/` directory for backup files
+      - Ensure database connection strings use Railway PostgreSQL
+      - Create separate test database configuration
+
+      ### 6. Railway Deployment File Organization
+
+      **Railway configuration files:**
+      - **Root railway.json**: Main project configuration (keep in root)
+      - **Backend railway.json**: Backend-specific configuration (in backend/)
+      - **Frontend railway.json**: Frontend-specific configuration (in frontend/)
+      - **Dockerfile**: Container configuration (in respective directories)
+      - **Procfile**: Process configuration (in backend/ for Python apps)
+
+      **Environment files:**
+      - **.env**: Local environment variables (in respective directories, gitignored)
+      - **env.example**: Environment variable templates (in respective directories)
+      - **.env.test**: Test environment variables (in respective directories, gitignored)
+      - **Railway environment variables**: Set in Railway dashboard (not in files)
+
+      ### 7. Temporary File Management
+
+      **Clean up after use:**
+      - Test scripts (e.g., `test_api.py`, `test_stations.py`)
+      - Debug scripts and temporary files
+      - Sample data generators
+      - Backup files (e.g., `dev.db.backup`)
+
+      **Move to utils/ if reusable:**
+      - Data processing scripts
+      - Database analysis tools
+      - Deployment utilities
+      - Performance testing scripts
+
+      **Keep in appropriate subdirectories:**
+      - Backend tests → `backend/tests/`
+      - Frontend tests → `frontend/__tests__/` or `frontend/tests/`
+      - Data processing → `utils/data_processing/`
+      - Deployment scripts → `utils/deployment_scripts/`
+      - Test utilities → `utils/testing_scripts/`
+
+      ### 8. File Naming Conventions
+
+      - **Test files**: `test_*.py` or `*_test.py` (backend), `*.test.{js,ts,tsx}` (frontend)
+      - **Test configuration**: `conftest.py`, `jest.config.js`, `pytest.ini`
+      - **Test runners**: `run_*_tests.py`, `test:watch`, `test:coverage`
+      - **Utility scripts**: Descriptive names (e.g., `database_stats.py`)
+      - **Temporary files**: Prefix with `temp_` or `debug_`
+      - **Backup files**: Suffix with `.backup` or `.bak`
+      - **Environment files**: `.env` for local, `env.example` for templates, `.env.test` for tests
+
+      ### 9. Specific File Type Guidelines
+
+      **Python Scripts:**
+      - Core application → `backend/`
+      - Utilities → `utils/`
+      - Tests → `backend/tests/`
+      - Data processing → `utils/data_processing/`
+
+      **JavaScript/TypeScript:**
+      - Application code → `frontend/`
+      - Build scripts → `utils/deployment_scripts/`
+      - Test utilities → `frontend/__tests__/` or `frontend/tests/`
+
+      **Configuration Files:**
+      - Railway configs → Keep in respective directories
+      - Environment files → Respective directories with `.env.example`
+      - Package configs → Respective directories
+      - Docker files → Respective directories
+      - Test configs → Respective directories (`pytest.ini`, `jest.config.js`)
+
+      **Data Files:**
+      - Raw data → `data/raw/`
+      - Processed data → `data/processed/`
+      - Database files → `data/` directory
+      - Database backups → `data/backups/`
+      - Test data → `utils/test_data/` or `data/samples/`
+
+      **Documentation:**
+      - Project docs → `project-docs/`
+      - API docs → `project-docs/`
+      - README files → Respective directories
+      - Test docs → `project-docs/TESTING.md`
+
+      ### 10. Cleanup Recommendations
+
+      **Files to clean up:**
+      - `test_api.py` (root) → Move to `backend/tests/` or delete if temporary
+      - `start_app.py` (root) → Move to `utils/deployment_scripts/`
+      - `dev.db.backup` (root) → Move to `data/backups/` or delete
+      - `dev.db` (root) → Move to `data/` directory
+      - Multiple database files → Consolidate or organize in `data/`
+      - Temporary test scripts in backend → Move to `backend/tests/`
+
+      **Files to organize:**
+      - Data loading scripts → `utils/data_processing/`
+      - Deployment scripts → `utils/deployment_scripts/`
+      - Database utilities → `utils/` (already there)
+      - Test data files → `utils/test_data/`
+      - Test configuration files → Respective directories
+
+      ### 11. Decision Framework
+
+      **When creating a file, ask:**
+      1. Is this temporary/testing code? → Clean up after use
+      2. Is this reusable utility? → Move to `utils/`
+      3. Is this application code? → Keep in `backend/` or `frontend/`
+      4. Is this data? → Move to `data/`
+      5. Is this documentation? → Move to `project-docs/`
+      6. Is this a database file? → Move to `data/` directory
+      7. Is this a deployment config? → Keep in respective directories
+      8. Is this a test file? → Follow test file organization standards
+      9. Is this test data? → Move to `utils/test_data/` or `data/samples/`
+
+      **When finished with a file, decide:**
+      - Delete if temporary and no longer needed
+      - Move to appropriate directory if reusable
+      - Archive if important but not actively used
+      - Update test files if functionality changed
+
+examples:
+  - input: |
+      # Bad: Test file in wrong location
+      test_probability.py (in root)
+      
+      # Good: Test file in correct location
+      backend/tests/test_probability_calculations.py
+      
+      # Bad: Test data in wrong location
+      sample_stations.json (in root)
+      
+      # Good: Test data in correct location
+      utils/test_data/sample_stations.json
+      
+      # Bad: Test config in wrong location
+      jest.config.js (in root)
+      
+      # Good: Test config in correct location
+      frontend/jest.config.js
+    output: "Properly organized test files and data"
+
+metadata:
+  priority: high
+  version: 1.2
+  tags: ["organization", "cleanup", "file-management", "database", "deployment", "testing", "test-organization"]
+</rule>

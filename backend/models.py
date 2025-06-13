@@ -18,4 +18,10 @@ class Trip(Base):
     start_station_id = Column(String(50), nullable=False)
     end_station_id = Column(String(50), nullable=False)
     started_at = Column(TIMESTAMP, nullable=False)
-    ended_at = Column(TIMESTAMP, nullable=False) 
+    ended_at = Column(TIMESTAMP, nullable=False)
+
+class StationMapping(Base):
+    __tablename__ = 'station_mapping'
+    uuid_station_id = Column(String(50), primary_key=True)
+    numeric_station_id = Column(String(50), nullable=False)
+    station_name = Column(String(255), nullable=False) 

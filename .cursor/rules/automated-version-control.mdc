@@ -1,0 +1,404 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Automated Version Control Rules
+
+Rules for automated git check-ins and version control management when tasks are completed.
+
+<rule>
+name: automated_version_control
+description: Standards for automated git check-ins and version control management when tasks are completed
+filters:
+  # Match PROJECT_PLAN.md file modifications
+  - type: file_path
+    pattern: ".*PROJECT_PLAN\\.md$"
+  # Match when tasks are marked as completed
+  - type: content
+    pattern: "✅.*Tasks:"
+  # Match test automation files
+  - type: file_path
+    pattern: ".*test.*\\.(py|js|ts|tsx|jsx)$"
+  # Match backend and frontend code changes
+  - type: file_path
+    pattern: "(backend|frontend)/.*\\.(py|js|ts|tsx|jsx)$"
+  # Match database and configuration changes
+  - type: file_path
+    pattern: ".*\\.(sql|json|yaml|yml|env|ini)$"
+  # Match documentation updates
+  - type: file_path
+    pattern: ".*\\.(md|txt)$"
+
+actions:
+  - type: suggest
+    message: |
+      When completing tasks in PROJECT_PLAN.md or making significant code changes:
+
+      ## Automated Version Control Workflow
+
+      ### 1. Task Completion Check-in Requirements
+
+      **When marking tasks as ✅ completed in PROJECT_PLAN.md:**
+      1. **Run tests first**: Execute relevant test suite for the completed task
+      2. **Verify functionality**: Ensure the completed task works as expected
+      3. **Update documentation**: Complete any missing documentation
+      4. **Commit changes**: Use conventional commit format
+      5. **Push to GitHub**: Keep remote repository in sync
+
+      **Required commit format for task completion:**
+      ```
+      feat(scope): complete task description from PROJECT_PLAN.md
+      
+      - Task X.Y: Brief description of what was completed
+      - Tests: List of test files that were run/updated
+      - Documentation: Any docs that were updated
+      - Breaking changes: If any (rare for MVP)
+      ```
+
+      ### 2. Automated Check-in Triggers
+
+      **Trigger conditions for automated check-ins:**
+      - ✅ Task marked as completed in PROJECT_PLAN.md
+      - Test suite passes successfully
+      - No critical errors in application
+      - Documentation is up to date
+      - Code follows project standards
+
+      **Check-in frequency guidelines:**
+      - **Daily**: If multiple tasks completed in one day
+      - **Per major task**: When a significant feature is completed
+      - **Weekly minimum**: Even if only minor changes
+      - **Before deployment**: Always check-in before Railway deployment
+
+      ### 3. Pre-Commit Validation
+
+      **Required checks before commit:**
+      1. **Test execution**: Run relevant test suite
+         ```bash
+         # For backend changes
+         cd backend && python run_backend_tests.py
+         
+         # For frontend changes  
+         cd frontend && npm test
+         
+         # For full project changes
+         python run_all_tests.py
+         ```
+
+      2. **Code quality checks**:
+         - No syntax errors
+         - No obvious bugs
+         - Code follows project standards
+         - Documentation is updated
+
+      3. **Database integrity**:
+         - Database migrations work correctly
+         - Data integrity is maintained
+         - No breaking schema changes
+
+      4. **Integration verification**:
+         - Frontend-backend communication works
+         - API endpoints respond correctly
+         - User workflows function properly
+
+      ### 4. Commit Message Standards
+
+      **Conventional commit format (REQUIRED):**
+      ```
+      type(scope): description
+      
+      - Task X.Y: What was completed
+      - Tests: Test files run/updated
+      - Documentation: Docs updated
+      - Breaking changes: If any
+      ```
+
+      **Types for CitiBike project:**
+      - `feat` - New features (task completion)
+      - `fix` - Bug fixes
+      - `docs` - Documentation updates
+      - `test` - Test additions/updates
+      - `refactor` - Code refactoring
+      - `chore` - Maintenance tasks
+
+      **Scopes for CitiBike project:**
+      - `backend` - FastAPI/Python changes
+      - `frontend` - Next.js/React changes
+      - `data` - Database/data processing changes
+      - `infra` - Railway/deployment changes
+      - `docs` - Documentation changes
+
+      **Examples:**
+      ```
+      feat(backend): complete database technology alignment task
+      
+      - Task 9.3: Migrate local development to PostgreSQL
+      - Tests: backend/tests/test_probability_calculations.py
+      - Documentation: Updated TESTING.md with PostgreSQL setup
+      - Database: Migrated 3.1M trips from SQLite to PostgreSQL
+      ```
+
+      ### 5. GitHub Sync Requirements
+
+      **When to push to GitHub:**
+      - After each task completion commit
+      - Before Railway deployment
+      - At least weekly (even for minor changes)
+      - When sharing code with others
+      - Before major refactoring
+
+      **Push workflow:**
+      ```bash
+      # Check current status
+      git status
+      
+      # Add all changes
+      git add .
+      
+      # Commit with conventional format
+      git commit -m "feat(scope): complete task description"
+      
+      # Push to GitHub
+      git push origin main
+      ```
+
+      ### 6. Integration with Test Automation
+
+      **Test-first commit approach:**
+      1. **Run tests before committing**:
+         ```bash
+         # For backend changes
+         cd backend && python run_backend_tests.py
+         
+         # For frontend changes
+         cd frontend && npm test
+         
+         # For full project
+         python run_all_tests.py
+         ```
+
+      2. **Only commit if tests pass**:
+         - Failed tests prevent commit
+         - Fix issues before committing
+         - Update tests if needed
+
+      3. **Include test updates in commit**:
+         - Add new tests for new features
+         - Update existing tests if behavior changes
+         - Document test coverage improvements
+
+      ### 7. Project Plan Integration
+
+      **When marking tasks as ✅ completed:**
+      1. **Verify task completion**:
+         - Code is implemented and working
+         - Tests pass for the completed functionality
+         - Documentation is updated
+         - No regressions introduced
+
+      2. **Commit task completion**:
+         - Use conventional commit format
+         - Reference the specific task number
+         - Include test results
+         - Update relevant documentation
+
+      3. **Push to GitHub**:
+         - Keep remote repository current
+         - Enable collaboration
+         - Maintain deployment readiness
+
+      ### 8. Emergency Commit Guidelines
+
+      **When to use emergency commits:**
+      - Critical bug fixes that need immediate deployment
+      - Security vulnerabilities
+      - Production issues requiring hotfixes
+
+      **Emergency commit format:**
+      ```
+      fix(scope): emergency fix for critical issue
+      
+      - Issue: Brief description of the problem
+      - Fix: What was changed to resolve it
+      - Tests: Manual verification performed
+      - Deployment: Immediate deployment required
+      ```
+
+      **Post-emergency cleanup:**
+      - Add proper tests for the fix
+      - Update documentation
+      - Create follow-up commit with full test coverage
+
+      ### 9. Branch Management
+
+      **Branch strategy for CitiBike MVP:**
+      - **`main`** - Production-ready code
+      - **`develop`** - Integration branch (if needed)
+      - **`feature/*`** - Feature branches (for complex features)
+      - **`hotfix/*`** - Emergency fixes
+
+      **Branch workflow:**
+      ```bash
+      # For new features
+      git checkout -b feature/new-feature
+      # ... work on feature ...
+      git checkout main
+      git merge feature/new-feature
+      git push origin main
+      ```
+
+      ### 10. Deployment Integration
+
+      **Pre-deployment check-in:**
+      1. Ensure all changes are committed
+      2. Verify tests pass
+      3. Check documentation is current
+      4. Push to GitHub
+      5. Deploy to Railway
+
+      **Post-deployment verification:**
+      1. Test deployed application
+      2. Verify all functionality works
+      3. Check for any regressions
+      4. Update deployment documentation if needed
+
+      ### 11. Current Project Status Check-in
+
+      **Based on PROJECT_PLAN.md completion status, commit these completed tasks:**
+
+      **Major completed tasks to commit:**
+      1. **Database Technology Alignment** (Task 9.1-9.3)
+         - PostgreSQL migration from SQLite
+         - Station mapping table implementation
+         - Probability endpoint format alignment
+
+      2. **Test Infrastructure Setup** (Task 11.1-11.4)
+         - Backend test infrastructure
+         - Frontend test infrastructure
+         - Test automation rules
+         - Critical test scenario fixes
+
+      3. **Critical Bug Fixes** (Task 7.1-7.4)
+         - Route restructuring
+         - Station API fixes
+         - Probability API error resolution
+         - Data source verification
+
+      **Recommended commit sequence:**
+      ```bash
+      # 1. Database technology alignment
+      git commit -m "feat(backend): complete database technology alignment
+      
+      - Task 9.1-9.3: Migrate to PostgreSQL, implement station mapping
+      - Database: 3.1M trips migrated, 2,234 station mappings created
+      - Tests: Updated for PostgreSQL compatibility
+      - Documentation: Updated TESTING.md with new setup instructions"
+
+      # 2. Test infrastructure setup
+      git commit -m "feat(test): complete comprehensive test infrastructure
+      
+      - Task 11.1-11.4: Backend/frontend test setup, automation rules
+      - Tests: pytest, Jest, React Testing Library configured
+      - Automation: Cursor AI rules for test execution
+      - Documentation: Complete test setup and troubleshooting guides"
+
+      # 3. Critical bug fixes
+      git commit -m "fix(frontend): resolve critical UX and API issues
+      
+      - Task 7.1-7.4: Route restructuring, API fixes, data verification
+      - Frontend: Simplified routing, fixed station combobox
+      - Backend: Fixed probability API, station mapping integration
+      - Data: Verified real CitiBike data integration"
+      ```
+
+      ### 12. Automated Check-in Script
+
+      **Create automated check-in script:**
+      ```bash
+      #!/bin/bash
+      # auto_checkin.sh
+      
+      echo "Running automated check-in process..."
+      
+      # 1. Run tests
+      echo "Running test suite..."
+      python run_all_tests.py
+      
+      if [ $? -eq 0 ]; then
+          echo "Tests passed. Proceeding with commit..."
+          
+          # 2. Check git status
+          git status
+          
+          # 3. Add all changes
+          git add .
+          
+          # 4. Commit with conventional format
+          git commit -m "feat(scope): automated check-in for completed tasks
+          
+          - Tests: All test suites passing
+          - Status: Automated check-in from local development
+          - Date: $(date)"
+          
+          # 5. Push to GitHub
+          git push origin main
+          
+          echo "Automated check-in completed successfully!"
+      else
+          echo "Tests failed. Please fix issues before committing."
+          exit 1
+      fi
+      ```
+
+examples:
+  - input: |
+      # Task completed in PROJECT_PLAN.md
+      ✅ 9.3. **Probability Endpoint Format Alignment**
+      
+      # Should trigger:
+      git add .
+      git commit -m "feat(backend): complete probability endpoint format alignment
+      
+      - Task 9.3: Auto-detect UUID vs station name input
+      - Tests: backend/tests/test_probability_calculations.py
+      - Backend: Added get_uuid_by_station_name() function
+      - Integration: Frontend-backend communication fixed"
+      git push origin main
+    output: "Task completion committed and pushed to GitHub"
+
+  - input: |
+      # Test infrastructure completed
+      ✅ 11.1. **Backend Test Infrastructure Setup**
+      
+      # Should trigger:
+      cd backend && python run_backend_tests.py
+      git add .
+      git commit -m "feat(test): complete backend test infrastructure
+      
+      - Task 11.1: pytest, test database, fixtures configured
+      - Tests: All backend tests passing
+      - Documentation: Updated TESTING.md"
+      git push origin main
+    output: "Test infrastructure committed and pushed to GitHub"
+
+  - input: |
+      # Critical bug fix
+      ✅ 7.5. **Probability API Error Resolution**
+      
+      # Should trigger:
+      python run_all_tests.py
+      git add .
+      git commit -m "fix(backend): resolve probability API JSON parsing error
+      
+      - Task 7.5: Fixed JSON serialization in probability endpoint
+      - Tests: backend/tests/test_api_endpoints.py
+      - Backend: Proper error handling and response formatting"
+      git push origin main
+    output: "Critical bug fix committed and pushed to GitHub"
+
+metadata:
+  priority: high
+  version: 1.0
+  tags: ["version-control", "git", "automation", "task-completion", "deployment", "testing", "project-plan-integration"]
+</rule>

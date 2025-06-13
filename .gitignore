@@ -37,6 +37,7 @@ venv.bak/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.test
 
 # Next.js
 .next/
@@ -56,6 +57,10 @@ pip-delete-this-directory.txt
 *.sqlite3
 backend/dev.db
 backend/*.db
+data/*.db
+data/backups/*.db
+data/backups/*.backup
+dev.db
 
 # IDE
 .vscode/
@@ -88,9 +93,9 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
-
-# nyc test coverage
 .nyc_output
+.coverage
+**/.coverage
 
 # Dependency directories
 jspm_packages/
@@ -113,9 +118,15 @@ jspm_packages/
 # Data files (large CSV files)
 data/citibike_data/*.csv
 data/citibike_data/*.zip
+*.csv
+*.zip
 
 # Large binary files and libraries
 *.dylib
 *.dll
 *.so
-*.node 
+*.node
+
+# Test files that shouldn't be committed
+test_client_debug.py
+troubleshoot_tests.sh 

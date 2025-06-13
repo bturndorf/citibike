@@ -1,7 +1,7 @@
 ---
-description: Refer to this rule when creating tasks in the project plan
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 <rule>
 name: project_plan_task_labeling

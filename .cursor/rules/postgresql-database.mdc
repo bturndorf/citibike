@@ -1,0 +1,360 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# PostgreSQL Database Rules
+
+Rules for ensuring this CitiBike project uses PostgreSQL instead of SQLite for all database operations.
+
+<rule>
+name: postgresql_database_usage
+description: Standards for using PostgreSQL instead of SQLite in the CitiBike project
+filters:
+  # Match Python files that might contain database code
+  - type: file_extension
+    pattern: "\\.py$"
+  # Match configuration files
+  - type: file_extension
+    pattern: "\\.(json|yaml|yml|ini|cfg|env|txt)$"
+  # Match SQL files
+  - type: file_extension
+    pattern: "\\.sql$"
+  # Match database-related content
+  - type: content
+    pattern: "(sqlite|\.db|sqlite3|SQLite)"
+  # Match database connection strings
+  - type: content
+    pattern: "(DATABASE_URL|db_url|connection_string)"
+  # Match file creation and modification events
+  - type: event
+    pattern: "file_create|file_modify"
+
+actions:
+  - type: reject
+    conditions:
+      - pattern: "sqlite://|\.db$|sqlite3\.|SQLite"
+        message: "This project uses PostgreSQL, not SQLite. Use Railway PostgreSQL database instead."
+
+  - type: suggest
+    message: |
+      When working with databases in this CitiBike project:
+
+      ## PostgreSQL Database Standards
+
+      ### 1. Database Configuration
+
+      **Use Railway PostgreSQL:**
+      - Database URL: `DATABASE_URL` environment variable from Railway
+      - Connection: Use `psycopg2` or `asyncpg` for Python
+      - Never use SQLite files (`.db` files)
+      - Never use `sqlite://` connection strings
+
+      **Correct Database Setup:**
+      ```python
+      # ✅ Correct - PostgreSQL with Railway
+      import os
+      from sqlalchemy import create_engine
+      
+      DATABASE_URL = os.getenv("DATABASE_URL")
+      engine = create_engine(DATABASE_URL)
+      ```
+
+      **❌ Incorrect - SQLite (Don't use):**
+      ```python
+      # Wrong - SQLite file
+      engine = create_engine("sqlite:///dev.db")
+      
+      # Wrong - SQLite in-memory
+      engine = create_engine("sqlite:///:memory:")
+      ```
+
+      ### 2. Database File Management
+
+      **Database files to avoid:**
+      - `dev.db` (SQLite file)
+      - `test.db` (SQLite file)
+      - `*.db` files (any SQLite database)
+      - `sqlite3` imports or usage
+
+      **Database files to use:**
+      - Railway PostgreSQL database (configured via `DATABASE_URL`)
+      - Database migration files (Alembic)
+      - Database schema files (SQL DDL)
+
+      ### 3. Environment Configuration
+
+      **Required Environment Variables:**
+      ```bash
+      # Railway PostgreSQL (production)
+      DATABASE_URL=postgresql://user:password@host:port/database
+      
+      # Local development (if needed)
+      DATABASE_URL=postgresql://localhost:5432/citibike_dev
+      ```
+
+      **Environment File Structure:**
+      ```
+      backend/
+      ├── .env.example          # Template with PostgreSQL config
+      ├── .env                  # Local development (gitignored)
+      └── railway.json          # Railway deployment config
+      ```
+
+      ### 4. Database Dependencies
+
+      **Required Python Packages:**
+      ```python
+      # requirements.txt
+      psycopg2-binary==2.9.9    # PostgreSQL adapter
+      sqlalchemy==2.0.23        # ORM
+      alembic==1.12.1           # Database migrations
+      ```
+
+      **Avoid SQLite packages:**
+      ```python
+      # Don't include these
+      # sqlite3  # Built-in, but don't use
+      ```
+
+      ### 5. Database Connection Patterns
+
+      **FastAPI Database Setup:**
+      ```python
+      # backend/main.py
+      from sqlalchemy import create_engine
+      from sqlalchemy.orm import sessionmaker
+      import os
+      
+      DATABASE_URL = os.getenv("DATABASE_URL")
+      engine = create_engine(DATABASE_URL)
+      SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+      ```
+
+      **SQLAlchemy Models:**
+      ```python
+      # backend/models.py
+      from sqlalchemy import Column, Integer, String, DateTime, Float
+      from sqlalchemy.ext.declarative import declarative_base
+      
+      Base = declarative_base()
+      
+      class Station(Base):
+          __tablename__ = "stations"
+          id = Column(Integer, primary_key=True, index=True)
+          # ... other fields
+      ```
+
+      ### 6. Database Migrations
+
+      **Alembic Configuration:**
+      ```python
+      # backend/alembic.ini
+      sqlalchemy.url = %(DATABASE_URL)s
+      ```
+
+      **Migration Commands:**
+      ```bash
+      # Create migration
+      cd backend && alembic revision --autogenerate -m "Add stations table"
+      
+      # Apply migration
+      cd backend && alembic upgrade head
+      ```
+
+      ### 7. Testing Database Setup
+
+      **Test Database Configuration:**
+      ```python
+      # backend/tests/conftest.py
+      import pytest
+      from sqlalchemy import create_engine
+      from sqlalchemy.orm import sessionmaker
+      import os
+      
+      @pytest.fixture
+      def test_db():
+          # Use test PostgreSQL database, not SQLite
+          test_db_url = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/citibike_test")
+          engine = create_engine(test_db_url)
+          # ... test setup
+      ```
+
+      **Test Environment Variables:**
+      ```bash
+      # .env.test
+      TEST_DATABASE_URL=postgresql://localhost:5432/citibike_test
+      ```
+
+      ### 8. Railway Deployment
+
+      **Railway Configuration:**
+      ```json
+      // railway.json
+      {
+        "build": {
+          "builder": "nixpacks"
+        },
+        "deploy": {
+          "startCommand": "uvicorn main:app --host 0.0.0.0 --port $PORT",
+          "healthcheckPath": "/health",
+          "healthcheckTimeout": 100,
+          "restartPolicyType": "ON_FAILURE"
+        }
+      }
+      ```
+
+      **Environment Variables in Railway:**
+      - `DATABASE_URL`: Automatically provided by Railway PostgreSQL
+      - `PORT`: Railway port configuration
+      - `RAILWAY_ENVIRONMENT`: Deployment environment
+
+      ### 9. Database Schema Management
+
+      **Schema Files:**
+      ```sql
+      -- backend/schema/01_stations.sql
+      CREATE TABLE stations (
+          id SERIAL PRIMARY KEY,
+          station_id VARCHAR(50) UNIQUE NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          latitude DECIMAL(10, 8) NOT NULL,
+          longitude DECIMAL(11, 8) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ```
+
+      **Index Creation:**
+      ```sql
+      -- backend/schema/02_indexes.sql
+      CREATE INDEX idx_stations_station_id ON stations(station_id);
+      CREATE INDEX idx_stations_location ON stations(latitude, longitude);
+      ```
+
+      ### 10. Data Types and Constraints
+
+      **PostgreSQL-Specific Features:**
+      ```python
+      # Use PostgreSQL data types
+      from sqlalchemy import Column, Integer, String, DateTime, Float, Text, Boolean
+      
+      class Trip(Base):
+          __tablename__ = "trips"
+          id = Column(Integer, primary_key=True, index=True)
+          start_time = Column(DateTime, nullable=False)
+          end_time = Column(DateTime, nullable=False)
+          duration = Column(Integer, nullable=False)  # seconds
+          distance = Column(Float)  # kilometers
+          notes = Column(Text)  # unlimited text
+          is_active = Column(Boolean, default=True)
+      ```
+
+      ### 11. Performance Considerations
+
+      **PostgreSQL Optimizations:**
+      - Use appropriate indexes for query patterns
+      - Use connection pooling for web applications
+      - Use prepared statements for repeated queries
+      - Monitor query performance with `EXPLAIN ANALYZE`
+
+      **Connection Pooling:**
+      ```python
+      # backend/database.py
+      from sqlalchemy import create_engine
+      from sqlalchemy.pool import QueuePool
+      
+      engine = create_engine(
+          DATABASE_URL,
+          poolclass=QueuePool,
+          pool_size=10,
+          max_overflow=20,
+          pool_pre_ping=True
+      )
+      ```
+
+      ### 12. Error Handling
+
+      **Database Error Handling:**
+      ```python
+      from sqlalchemy.exc import SQLAlchemyError
+      from psycopg2.errors import UniqueViolation, ForeignKeyViolation
+      
+      try:
+          db.add(new_station)
+          db.commit()
+      except UniqueViolation:
+          db.rollback()
+          raise HTTPException(status_code=400, detail="Station already exists")
+      except SQLAlchemyError as e:
+          db.rollback()
+          raise HTTPException(status_code=500, detail="Database error")
+      ```
+
+      ### 13. Backup and Recovery
+
+      **Database Backups:**
+      - Use Railway's built-in backup features
+      - Set up automated backups via Railway dashboard
+      - Store backup files in `data/backups/` directory
+      - Never rely on local SQLite files for backups
+
+      **Backup Commands:**
+      ```bash
+      # Railway PostgreSQL backup (via Railway CLI)
+      railway connect
+      pg_dump $DATABASE_URL > data/backups/backup_$(date +%Y%m%d).sql
+      ```
+
+      ### 14. Migration from SQLite
+
+      **If migrating from SQLite:**
+      1. Export data from SQLite: `sqlite3 dev.db .dump > data/backup.sql`
+      2. Convert SQLite schema to PostgreSQL
+      3. Import data to PostgreSQL
+      4. Update all connection strings
+      5. Remove SQLite files
+      6. Update tests to use PostgreSQL
+
+      **Schema Conversion:**
+      ```sql
+      -- Convert SQLite INTEGER PRIMARY KEY to PostgreSQL SERIAL
+      -- SQLite: id INTEGER PRIMARY KEY
+      -- PostgreSQL: id SERIAL PRIMARY KEY
+      
+      -- Convert SQLite TEXT to PostgreSQL VARCHAR or TEXT
+      -- SQLite: name TEXT
+      -- PostgreSQL: name VARCHAR(255) or name TEXT
+      ```
+
+examples:
+  - input: |
+      # Wrong - SQLite connection
+      engine = create_engine("sqlite:///dev.db")
+      
+      # Should be:
+      engine = create_engine(os.getenv("DATABASE_URL"))
+    output: "PostgreSQL connection configured correctly"
+
+  - input: |
+      # Wrong - SQLite file creation
+      import sqlite3
+      conn = sqlite3.connect("test.db")
+      
+      # Should be:
+      from sqlalchemy import create_engine
+      engine = create_engine(os.getenv("DATABASE_URL"))
+    output: "PostgreSQL database connection established"
+
+  - input: |
+      # Wrong - SQLite in requirements
+      sqlite3
+      
+      # Should be:
+      psycopg2-binary==2.9.9
+    output: "PostgreSQL dependency added correctly"
+
+metadata:
+  priority: high
+  version: 1.0
+  tags: ["database", "postgresql", "railway", "sqlite-migration", "deployment", "configuration"]
+</rule>

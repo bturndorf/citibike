@@ -1,5 +1,190 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# Project Plan Task Completion
+
+Enhanced rule for marking completed tasks in the project plan document with automatic detection and enforcement.
+
+<rule>
+name: project_plan_task_completion
+description: Enforces marking completed tasks in PROJECT_PLAN.md with automatic detection and verification
+filters:
+  # Match the project plan file
+  - type: file_path
+    pattern: "project-docs/PROJECT_PLAN\\.md"
+  # Match task lines that should be marked as completed
+  - type: content
+    pattern: "\\d+\\.\\s*\\*\\*.*\\*\\*"
+  # Match file modification events
+  - type: event
+    pattern: "file_modify"
+  # Match task completion patterns in code changes
+  - type: content
+    pattern: "(COMPLETED|DONE|FINISHED|✅|✓|Task.*completed|Task.*finished)"
+  # Match when code changes are made that complete tasks
+  - type: file_extension
+    pattern: "\\.(py|js|ts|tsx|jsx|json|ini|cfg|md)$"
+  # Match specific task completion indicators
+  - type: content
+    pattern: "(def test_.*|class.*Test|pytest|jest|playwright|TestClient|conftest\\.py|is_uuid_format|postgresql|sqlite|database|api.*endpoint|probability.*calc)"
+
+actions:
+  - type: enforce
+    message: |
+      **CRITICAL: Task Completion Enforcement**
+      
+      When completing tasks in PROJECT_PLAN.md:
+
+      1. **IMMEDIATE MARKING**: Mark completed tasks with ✅ at the beginning of the task line:
+         ```
+         ✅ 1. **Route Simplification**
+         ✅ 2. **App Description Addition**
+         3. **Stations API Fix** (not completed yet)
+         ```
+
+      2. **VERIFICATION REQUIRED**: Only mark tasks as completed when they are fully implemented and tested
+
+      3. **SEQUENTIAL UPDATING**: Update the task status immediately after completion to maintain accurate progress tracking
+
+      4. **CODE + PLAN SYNC**: When making code changes that complete a task, update both the code AND the project plan
+
+      5. **WORK ON ONE TASK AT A TIME**: Focus on completing one task fully before moving to the next
+
+      6. **AUTOMATIC DETECTION**: The system will detect when you've completed tasks and prompt you to mark them
+
+  - type: reject
+    conditions:
+      - pattern: "COMPLETED.*\\d+\\.\\s*\\*\\*.*\\*\\*"
+        message: "Use ✅ instead of COMPLETED to mark task completion"
+      
+      - pattern: "DONE.*\\d+\\.\\s*\\*\\*.*\\*\\*"
+        message: "Use ✅ instead of DONE to mark task completion"
+      
+      - pattern: "FINISHED.*\\d+\\.\\s*\\*\\*.*\\*\\*"
+        message: "Use ✅ instead of FINISHED to mark task completion"
+
+  - type: prompt
+    conditions:
+      - pattern: "def test_.*probability.*"
+        message: "**DETECTED**: Probability calculator test created. Have you completed Task 7.2 (Fix Missing Probability Calculator Methods)? If yes, mark it with ✅ in PROJECT_PLAN.md"
+      
+      - pattern: "def test_.*api.*"
+        message: "**DETECTED**: API test created. Have you completed related API tasks? If yes, mark them with ✅ in PROJECT_PLAN.md"
+      
+      - pattern: "conftest\\.py.*postgresql"
+        message: "**DETECTED**: PostgreSQL test configuration. Have you completed Task 7.1 (Fix Test Database Configuration)? If yes, mark it with ✅ in PROJECT_PLAN.md"
+      
+      - pattern: "is_uuid_format"
+        message: "**DETECTED**: UUID format method implemented. Have you completed Task 7.2 (Fix Missing Probability Calculator Methods)? If yes, mark it with ✅ in PROJECT_PLAN.md"
+      
+      - pattern: "TestClient.*FastAPI"
+        message: "**DETECTED**: FastAPI TestClient configuration. Have you completed Task 7.3 (Fix FastAPI TestClient Configuration)? If yes, mark it with ✅ in PROJECT_PLAN.md"
+
+  - type: suggest
+    message: |
+      **Task Completion Checklist:**
+      
+      Before marking a task as complete:
+      - [ ] Code changes are implemented
+      - [ ] Tests are written and passing
+      - [ ] Documentation is updated
+      - [ ] Project plan is updated with ✅
+      - [ ] Changes are committed together
+
+      **After completing work:**
+      1. Verify the implementation works
+      2. Run relevant tests
+      3. Update PROJECT_PLAN.md with ✅
+      4. Commit both code and plan changes
+      5. Only then proceed to next task
+
+      **Current Task Context:**
+      
+      When working on code changes, ask:
+      1. Which specific task am I implementing?
+      2. Is this task listed in PROJECT_PLAN.md?
+      3. Have I written tests for this task?
+      4. Is the implementation complete and working?
+      5. Should I mark this task as ✅ in the project plan?
+
+      **AUTOMATIC PROMPTS:**
+      The system will now automatically detect when you complete tasks and prompt you to mark them in PROJECT_PLAN.md. Don't ignore these prompts!
+
+  - type: detect
+    conditions:
+      - pattern: "def test_.*probability.*"
+        message: "Detected probability calculator test - check if Task 7.2 should be marked complete"
+      
+      - pattern: "def test_.*api.*"
+        message: "Detected API test - check if related task should be marked complete"
+      
+      - pattern: "conftest\\.py.*postgresql"
+        message: "Detected PostgreSQL test configuration - check if Task 7.1 should be marked complete"
+      
+      - pattern: "is_uuid_format"
+        message: "Detected UUID format method - check if Task 7.2 should be marked complete"
+      
+      - pattern: "TestClient.*FastAPI"
+        message: "Detected FastAPI TestClient - check if Task 7.3 should be marked complete"
+
+  - type: require
+    conditions:
+      - pattern: "✅.*\\d+\\.\\s*\\*\\*.*\\*\\*"
+        message: "Task completion marked correctly with ✅"
+      
+      - pattern: "\\d+\\.\\s*\\*\\*.*\\*\\*.*(test|pytest|jest|api|probability|database)"
+        message: "Task appears to be completed but not marked with ✅. Please mark completed tasks with ✅"
+
+examples:
+  - input: |
+      # Before completion
+      1. **Route Simplification**
+         - Remove homepage (index.tsx) and make /calculate the only route
+         - Redirect root path to /calculate
+
+      # After completion
+      ✅ 1. **Route Simplification**
+         - Remove homepage (index.tsx) and make /calculate the only route
+         - Redirect root path to /calculate
+    output: "Task properly marked as completed with ✅"
+
+  - input: |
+      # Wrong - using text instead of checkmark
+      COMPLETED 1. **Route Simplification**
+      
+      # Should be:
+      ✅ 1. **Route Simplification**
+    output: "Use ✅ checkmark instead of text completion markers"
+
+  - input: |
+      # Code changes made but plan not updated
+      def new_function():
+          return "completed"
+      
+      # Missing: Update PROJECT_PLAN.md with ✅
+    output: "Remember to update PROJECT_PLAN.md when completing tasks"
+
+  - input: |
+      # Working on multiple tasks simultaneously (BAD)
+      # Task 7.3: Fix FastAPI TestClient
+      # Task 7.4: Add Integration Tests
+      
+      # Should focus on one task at a time
+    output: "Focus on completing one task fully before moving to the next"
+
+  - input: |
+      # Automatic detection example
+      def test_probability_calculation():
+          # Test implementation
+          pass
+      
+      # System should prompt: "DETECTED: Probability calculator test created. Have you completed Task 7.2?"
+    output: "Automatic detection should prompt for task completion marking"
+
+metadata:
+  priority: high
+  version: 3.0
+  tags: ["task-management", "project-planning", "completion-tracking", "enforcement", "sequential", "automatic-detection", "prompts"]
+</rule>

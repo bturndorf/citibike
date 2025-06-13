@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class CitiBikeAppStarter:
     def __init__(self):
-        self.project_root = Path(__file__).parent
+        self.project_root = Path(__file__).parent.parent.parent  # Go up 3 levels: utils/deployment_scripts/ -> utils/ -> project_root
         self.backend_dir = self.project_root / "backend"
         self.frontend_dir = self.project_root / "frontend"
         
@@ -106,7 +106,7 @@ class CitiBikeAppStarter:
         # Load real data
         try:
             result = subprocess.run(
-                [sys.executable, 'load_real_data.py'],
+                [sys.executable, '../utils/data_processing/load_real_data.py'],
                 cwd=self.backend_dir,
                 capture_output=True,
                 text=True

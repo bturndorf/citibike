@@ -1,5 +1,52 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# Cursor Agent Rule: Sequential Task Execution
+
+Rules for ensuring the Cursor Agent follows the project plan sequentially.
+
+<rule>
+name: sequential_task_execution
+description: Enforces sequential execution of tasks from PROJECT_PLAN.md
+filters:
+  # Match when PROJECT_PLAN.md is referenced
+  - type: content
+    pattern: "PROJECT_PLAN\\.md"
+  # Match task-related queries
+  - type: content
+    pattern: "(task|phase|step|next|continue|proceed)"
+
+actions:
+  - type: enforce
+    message: |
+      The Cursor Agent must proceed sequentially through the task list in `PROJECT_PLAN.md`.
+      
+      Key requirements:
+      - Each task should be completed in order, as described in the plan, before moving to the next task
+      - No task should be skipped or performed out of order unless explicitly instructed
+      - Each completed task should be verified before advancing
+      - Follow the exact sequence outlined in the project plan phases
+
+  - type: suggest
+    message: |
+      When working with PROJECT_PLAN.md:
+      
+      1. Always check the current phase and task number
+      2. Complete the current task fully before moving to the next
+      3. Verify task completion with appropriate testing or validation
+      4. Only proceed to the next task after current task is confirmed complete
+      5. If a task fails, address the issue before continuing
+
+examples:
+  - input: "What should I do next?"
+    output: "Check PROJECT_PLAN.md for the next sequential task in the current phase"
+  
+  - input: "Can I skip this task?"
+    output: "No, tasks must be completed in order unless explicitly instructed otherwise"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule>

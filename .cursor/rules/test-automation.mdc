@@ -1,0 +1,307 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Test Automation Rules
+
+Rules for running tests automatically during development to prevent regressions.
+
+<rule>
+name: test_automation
+description: Standards for running tests automatically during code changes and deployments
+filters:
+  # Match any code file changes
+  - type: file_extension
+    pattern: "\\.(py|js|ts|tsx|jsx)$"
+  # Match test file changes
+  - type: file_path
+    pattern: ".*test.*\\.(py|js|ts|tsx|jsx)$"
+  # Match database migration files
+  - type: file_extension
+    pattern: "\\.sql$"
+  # Match configuration files
+  - type: file_extension
+    pattern: "\\.(json|yaml|yml|ini|cfg)$"
+  # Match project plan updates
+  - type: file_path
+    pattern: "project-docs/PROJECT_PLAN\\.md"
+  # Match file modification events
+  - type: event
+    pattern: "file_modify|file_create"
+
+actions:
+  - type: suggest
+    message: |
+      When making code changes, follow these test automation rules:
+
+      ## Test Execution Guidelines
+
+      ### 1. When Tests Should Run
+
+      **Always run tests when:**
+      - Modifying backend Python files (prob_calc.py, main.py, models.py)
+      - Changing frontend React components or pages
+      - Updating API endpoints or data models
+      - Modifying database schema or migrations
+      - Changing configuration files (requirements.txt, package.json)
+      - Adding new dependencies or updating existing ones
+      - Updating PROJECT_PLAN.md with task completions
+
+      **Skip tests for local development when:**
+      - Making temporary debugging changes (use `# TODO: Add test` comments)
+      - Working on experimental features (create separate branch)
+      - Making documentation-only changes
+      - Adding comments or formatting changes only
+
+      ### 2. File-Specific Test Triggers
+
+      **Backend Files:**
+      - `prob_calc.py` → Run probability calculation tests: `cd backend && python -m pytest tests/test_probability_calculations.py -v`
+      - `main.py` → Run API endpoint tests: `cd backend && python -m pytest tests/test_api_endpoints.py -v`
+      - `models.py` → Run database tests: `cd backend && python -m pytest tests/test_stations.py -v`
+      - `requirements.txt` → Run all backend tests: `cd backend && python run_backend_tests.py`
+
+      **Frontend Files:**
+      - `pages/calculate.tsx` → Run page component tests: `cd frontend && npm test -- --testPathPattern=calculate`
+      - `components/StationSelector.tsx` → Run component tests: `cd frontend && npm test -- --testPathPattern=StationSelector`
+      - `package.json` → Run all frontend tests: `cd frontend && npm test`
+
+      **Database Files:**
+      - `*.sql` → Run data integrity tests: `cd backend && python -m pytest tests/test_stations.py -v`
+
+      **Configuration Files:**
+      - `pytest.ini` → Run all backend tests: `cd backend && python run_backend_tests.py`
+      - `jest.config.js` → Run all frontend tests: `cd frontend && npm test`
+      - `railway.json` → Run deployment tests: `python run_all_tests.py`
+
+      **Project Plan Updates:**
+      - `PROJECT_PLAN.md` → Run relevant tests based on completed tasks:
+        - If backend tasks completed → `cd backend && python run_backend_tests.py`
+        - If frontend tasks completed → `cd frontend && npm test`
+        - If test infrastructure tasks completed → `python run_all_tests.py`
+
+      ### 3. Test Execution Order
+
+      **Backend Changes:**
+      1. Run backend unit tests: `cd backend && python -m pytest tests/ -v`
+      2. Run probability calculation tests: `cd backend && python -m pytest tests/test_probability_calculations.py -v`
+      3. Run API endpoint tests: `cd backend && python -m pytest tests/test_api_endpoints.py -v`
+      4. Run station tests: `cd backend && python -m pytest tests/test_stations.py -v`
+      5. Check test coverage: `cd backend && python -m pytest tests/ --cov=. --cov-report=html`
+
+      **Frontend Changes:**
+      1. Run frontend unit tests: `cd frontend && npm test`
+      2. Check test coverage: `cd frontend && npm run test:coverage`
+
+      **Database Changes:**
+      1. Run station data tests: `cd backend && python -m pytest tests/test_stations.py -v`
+      2. Run probability data tests: `cd backend && python -m pytest tests/test_probability_calculations.py -v`
+
+      **Integration Changes:**
+      1. Run API integration tests: `cd backend && python -m pytest tests/test_api_endpoints.py -v`
+      2. Test complete user workflows: `cd backend && python tests/test_api.py`
+
+      ### 4. Test Failure Handling
+
+      **If tests fail:**
+      1. **DO NOT** commit changes until tests pass
+      2. **DO NOT** deploy to production with failing tests
+      3. **DO** investigate and fix the root cause
+      4. **DO** add new tests for the bug that was caught
+      5. **DO** update test documentation if needed
+
+      **Test failure scenarios:**
+      - **Backend API changes**: Check if endpoints still return expected responses
+      - **Database schema changes**: Verify data integrity and query compatibility
+      - **Probability calculation changes**: Ensure mathematical accuracy
+      - **Frontend component changes**: Check rendering and user interactions
+      - **Integration changes**: Verify end-to-end workflows still work
+
+      ### 5. Test Environment Management
+
+      **Local Development:**
+      - Use PostgreSQL test database (citibike_test)
+      - Set TEST_DATABASE_URL environment variable
+      - Use test-specific configuration files
+      - Clean up test data after each test run
+
+      **Production Deployment:**
+      - Run full test suite before deployment
+      - Verify database migrations work correctly
+      - Test with production-like data volumes
+      - Check performance under load
+
+      ### 6. Test Data Requirements
+
+      **Test Database Setup:**
+      - Use PostgreSQL test database (citibike_test)
+      - Include sample stations and trips for testing
+      - Ensure test data is isolated from development data
+      - Clean up test data after each test run
+
+      **Sample Test Data:**
+      - 10-20 sample stations with known characteristics
+      - 100-1000 sample trips with realistic patterns
+      - Known probability calculation results for validation
+      - Edge cases and error conditions
+
+      ### 7. Test Coverage Requirements
+
+      **Minimum Coverage Targets:**
+      - Backend API endpoints: 90%+
+      - Probability calculation logic: 95%+
+      - Database operations: 85%+
+      - Frontend components: 80%+
+      - Integration workflows: 75%+
+
+      **Critical Path Coverage:**
+      - Station selection and validation
+      - Probability calculation accuracy
+      - API communication between frontend and backend
+      - Database query performance
+      - Error handling and edge cases
+
+      ### 8. Test Automation Scripts
+
+      **Available Test Commands:**
+      ```bash
+      # Run all tests
+      python run_all_tests.py
+      
+      # Run backend tests only
+      cd backend && python run_backend_tests.py
+      
+      # Run frontend tests only
+      cd frontend && npm test
+      
+      # Run specific backend test files
+      cd backend && python -m pytest tests/test_probability_calculations.py -v
+      cd backend && python -m pytest tests/test_api_endpoints.py -v
+      cd backend && python -m pytest tests/test_stations.py -v
+      cd backend && python -m pytest tests/test_probability.py -v
+      cd backend && python -m pytest tests/test_api.py -v
+      
+      # Run tests with coverage
+      cd backend && python -m pytest tests/ --cov=. --cov-report=html
+      ```
+
+      ### 9. Pre-Commit Test Hooks
+
+      **Automatic Test Execution:**
+      - Tests run automatically before git commits
+      - Failed tests prevent commit completion
+      - Test results are displayed in terminal
+      - Coverage reports are generated
+
+      **Manual Test Override:**
+      - Use `git commit --no-verify` to skip tests (emergency only)
+      - Add `# SKIP_TESTS` comment for temporary changes
+      - Document why tests were skipped in commit message
+
+      ### 10. Railway Deployment Testing
+
+      **Pre-Deployment Tests:**
+      1. Run full test suite locally
+      2. Verify database migrations work
+      3. Test with production-like environment
+      4. Check API endpoints respond correctly
+      5. Verify frontend-backend integration
+
+      **Post-Deployment Verification:**
+      1. Run smoke tests on Railway deployment
+      2. Verify database connections work
+      3. Check probability calculations are accurate
+      4. Test complete user workflows
+      5. Monitor for any regressions
+
+      ### 11. Test Documentation
+
+      **Required Documentation:**
+      - Test setup instructions in README.md
+      - Test writing guidelines and conventions
+      - Test debugging and troubleshooting guide
+      - Test data management documentation
+      - Performance testing guidelines
+
+      **Test Comments:**
+      - Add descriptive comments to complex tests
+      - Document test data setup and cleanup
+      - Explain edge cases and error conditions
+      - Reference related issues or bugs
+
+      ### 12. Integration with Project Plan
+
+      **When marking tasks as completed in PROJECT_PLAN.md:**
+      1. Run relevant tests for the completed task
+      2. Update test documentation if needed
+      3. Verify test coverage for the completed functionality
+      4. Add new tests for any new features
+      5. Update test automation scripts if needed
+
+      ### 13. Critical Setup Requirements
+
+      **Environment Variables (REQUIRED):**
+      ```bash
+      export TEST_DATABASE_URL="postgresql://localhost:5432/citibike_test"
+      ```
+
+      **Database Setup (REQUIRED):**
+      ```bash
+      createdb citibike_test
+      ```
+
+      **Dependencies (REQUIRED):**
+      ```bash
+      pip install httpx==0.24.1
+      pip install fastapi==0.104.1
+      pip install pytest==7.4.3
+      ```
+
+      **Python Path Setup:**
+      - Ensure conftest.py has sys.path setup at the very top
+      - Run tests from backend directory: `cd backend && python -m pytest tests/ -v`
+
+examples:
+  - input: |
+      # Backend code change
+      def calculate_probability(...):
+          # Modified calculation logic
+          return new_result
+      
+      # Should run:
+      cd backend && python -m pytest tests/test_probability_calculations.py -v
+    output: "Backend probability tests executed successfully"
+
+  - input: |
+      # Frontend component change
+      const StationSelector = () => {
+          // Modified component logic
+          return <div>...</div>
+      }
+      
+      # Should run:
+      cd frontend && npm test -- --testPathPattern=StationSelector
+    output: "Frontend component tests executed successfully"
+
+  - input: |
+      # Database migration
+      ALTER TABLE trips ADD COLUMN new_field VARCHAR(50);
+      
+      # Should run:
+      cd backend && python -m pytest tests/test_stations.py -v
+    output: "Database tests executed successfully"
+
+  - input: |
+      # Project plan update
+      ✅ 1. **Backend Test Infrastructure Setup**
+      
+      # Should run:
+      cd backend && python run_backend_tests.py
+    output: "Backend test infrastructure verified successfully"
+
+metadata:
+  priority: high
+  version: 2.1
+  tags: ["testing", "automation", "quality-assurance", "regression-prevention", "file-triggers", "project-plan-integration", "citibike-specific"]
+</rule>

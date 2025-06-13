@@ -52,15 +52,22 @@ class ProbabilityRequest(BaseModel):
 
 class ProbabilityResponse(BaseModel):
     probability: float
-    confidence_interval: List[float]
+    confidence_interval: str
     explanation: str
     station_info: Optional[dict] = None
 
 # Load environment variables from .env
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {})
+# Use test database if TESTING environment variable is set
+if os.getenv("TESTING") == "true":
+    DATABASE_URL = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/citibike_test")
+    logger.info("Using test database for testing mode")
+else:
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/citibike_dev")
+    logger.info("Using production database")
+
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Dependency to get database session
@@ -109,7 +116,7 @@ async def root():
 async def get_stations(db: Session = Depends(get_db)):
     """Get list of all CitiBike stations with statistics"""
     try:
-        # Query stations with trip statistics
+        # Query stations with trip statistics using station_mapping table
         query = text("""
             SELECT 
                 s.id,
@@ -120,7 +127,8 @@ async def get_stations(db: Session = Depends(get_db)):
                 COUNT(t.id) as total_trips,
                 COUNT(DISTINCT t.bike_id) as unique_bikes
             FROM stations s
-            LEFT JOIN trips t ON s.station_id = t.start_station_id
+            LEFT JOIN station_mapping sm ON s.station_id = sm.uuid_station_id
+            LEFT JOIN trips t ON sm.numeric_station_id = t.start_station_id
             GROUP BY s.id, s.station_id, s.name, s.latitude, s.longitude
             ORDER BY total_trips DESC
         """)

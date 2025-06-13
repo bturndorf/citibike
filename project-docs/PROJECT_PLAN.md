@@ -259,19 +259,176 @@
    - Verified database now contains real data (not synthetic)
    - Application now uses real CitiBike data for all calculations
 
-7. **Test Suite Implementation**
-   - Define critical test scenarios (see section 7.1)
-   - Set up testing framework (Jest/React Testing Library for frontend, pytest for backend)
-   - Implement automated tests for core functionality
-   - Add simple test automation (no complex CI/CD for MVP)
+✅ 7. **Database Trip Count Investigation**
+   - **ROOT CAUSE IDENTIFIED**: Station ID format mismatch between tables
+   - **Stations table**: Uses UUID format (e.g., `ffae66ec-7c16-436f-bd0a-eedf81d580e7`)
+   - **Trips table**: Uses numeric format (e.g., `6650.07`, `6432.11`)
+   - **Result**: 0 matching stations between tables, breaking probability calculations
+   - **Solution**: Created `station_mapping` table linking UUID to numeric IDs
+   - **Mapping table**: 2,234 stations mapped, 2,143 start stations and 2,180 end stations now match
+   - **Verification**: Join queries now work correctly (e.g., "W 21 St & 6 Ave" has 12,342 trips)
+
+✅ 8. **Backend API Update for Station Mapping**
+   - Update `/api/probability` endpoint to use station_mapping table for joins
+   - Modify SQL queries to join stations → station_mapping → trips
+   - Test probability calculations with known stations (e.g., "W 21 St & 6 Ave")
+   - Verify API returns correct trip counts and bike counts
+   - Add error handling for stations not found in mapping table
+
+✅ 9. **Database Technology Alignment & Production Schema Update**
+   - **CRITICAL ISSUE IDENTIFIED**: Database technology mismatch between local and production
+   - **Local development**: SQLite (doesn't support PostgreSQL syntax like `EXTRACT(EPOCH FROM ...)`)
+   - **Railway production**: PostgreSQL (supports the syntax we're using)
+   - **Solution**: Migrate local development to PostgreSQL
+   
+   **Tasks:**
+   1. **Local PostgreSQL Migration** ✅ COMPLETED
+      - Installed PostgreSQL 14 via Homebrew
+      - Created local `dev` database
+      - Migrated 3.1M trips from SQLite to PostgreSQL (~10 minutes with bulk inserts)
+      - Updated Alembic config to use environment variables
+      - Verified backend connects to PostgreSQL successfully
+   
+   2. **Station Mapping Table Setup** ✅ COMPLETED
+      - **ISSUE RESOLVED**: Station mapping table was empty (0 records)
+      - **SOLUTION IMPLEMENTED**: Created `populate_station_mapping.py` script
+      - **DATA POPULATED**: Successfully loaded 2,234 station mappings from stations.json
+      - **MAPPING STRUCTURE**: UUID station_id → numeric_station_id → station_name
+      - **VERIFICATION**: Mapping table now works correctly with trips table
+      - **EXAMPLE**: "W 21 St & 6 Ave" (UUID: 66dc120f-0aca-11e7-82f6-3863bb44ef7c, Numeric: 6140.05) has 12,342 trips
+   
+   3. **Probability Endpoint Format Alignment** 🔄 IN PROGRESS
+      - **ISSUE IDENTIFIED**: Frontend sends station names, backend expects UUIDs
+      - **EXAMPLE**: Frontend sends "W 21 St & 6 Ave", backend expects "66dc120f-0aca-11e7-82f6-3863bb44ef7c"
+      - **SOLUTION IMPLEMENTED**: Added `get_uuid_by_station_name()` function to prob_calc.py
+      - **BACKEND UPDATE**: Modified `calculate_bike_movement_probability()` to accept station names or UUIDs
+      - **LOGIC ADDED**: Auto-detects if input is UUID (36 chars with hyphens) or station name
+      - **CURRENT STATE**: Backend code updated, needs testing with frontend
+      - **NEXT STEPS**:
+         - Test probability endpoint with station names
+         - Verify UUID lookup works correctly
+         - Test complete user workflow with fixed backend
+   
+   4. **Production Database Schema Update**
+      - Create migration script to add station_mapping table to Railway PostgreSQL
+      - Populate production database with station mappings using stations.json
+      - Verify mapping table works in production environment
+      - Test probability calculations in production
+      - Update database schema documentation
+
+10. **Frontend Station Data Update**
+    - Verify frontend stations combobox still works with UUID station IDs
+    - Test that station selection properly maps to numeric IDs for API calls
+    - Ensure station names display correctly in dropdown
+    - Test complete user workflow with fixed backend
+
+11. **Test Infrastructure Setup & Automation**
+    - **OBJECTIVE**: Establish comprehensive test infrastructure to prevent regressions
+    - **GOAL**: Run tests automatically on code changes, database migrations, and deployments
+    - **SCOPE**: Backend (Python/pytest), Frontend (Jest/React Testing Library), Integration (Playwright)
+    
+    **Tasks:**
+    ✅ 1. **Backend Test Infrastructure Setup**
+       - Add pytest and testing dependencies to backend/requirements.txt
+       - Create pytest.ini configuration file
+       - Set up test database configuration (separate from dev/prod)
+       - Create test fixtures for database sessions and sample data
+       - Implement test data seeding scripts
+       - Add test environment variables (.env.test)
+       - Create test runner script (run_backend_tests.py)
+       - Add test coverage reporting with pytest-cov
+    
+    ✅ 2. **Frontend Test Infrastructure Setup**
+       - Add Jest, React Testing Library, and testing dependencies to frontend/package.json
+       - Create jest.config.js configuration
+       - Set up test environment for Next.js
+       - Create test utilities and mock data
+       - Add test scripts to package.json (test, test:watch, test:coverage)
+       - Configure test environment variables
+       - Create test runner script (run_frontend_tests.py)
+    
+    3. **Integration Test Infrastructure Setup**
+       - Add Playwright for end-to-end testing
+       - Create playwright.config.js
+       - Set up test database for integration tests
+       - Create test scenarios for complete user workflows
+       - Add integration test runner script
+       - Configure test environment for Railway deployment testing
+    
+    4. **Test Data Management**
+       - Create test database schema (simplified version of production)
+       - Implement test data seeding scripts
+       - Create sample station and trip data for testing
+       - Add test data cleanup scripts
+       - Ensure test data isolation from development/production
+    
+    5. **Test Automation Scripts**
+       - Create root-level test runner (run_all_tests.py)
+       - Add pre-commit test hooks
+       - Create Railway deployment test scripts
+       - Add test result reporting and notifications
+       - Implement test failure handling and reporting
+    
+    ✅ 6. **Cursor AI Test Rule Creation**
+       - Create .cursor/rules/test-automation.mdc rule
+       - Define when tests should run (file changes, commits, deployments)
+       - Specify test execution order and dependencies
+       - Add test skipping conditions for local development
+       - Define test failure handling and reporting requirements
+    
+    7. **Critical Test Scenarios Implementation**
+       - **Backend API Tests**: All endpoints return correct responses
+       - **Probability Calculation Tests**: Mathematical accuracy and edge cases
+       - **Database Integration Tests**: Connection, queries, and data integrity
+       - **Frontend Component Tests**: Rendering, user interactions, form validation
+       - **Integration Tests**: Complete user workflows, API communication
+       - **Performance Tests**: Response times, memory usage, database query performance
+       
+       **Immediate Test Infrastructure Fixes:**
+       ✅ 7.1. **Fix Test Database Configuration**
+          - Update conftest.py to use PostgreSQL instead of SQLite for test database
+          - Configure TEST_DATABASE_URL environment variable for PostgreSQL test database
+          - Ensure test database uses same PostgreSQL dialect as production
+          - Fix datetime handling in test data (PostgreSQL accepts string formats)
+       
+       ✅ 7.2. **Fix Missing Probability Calculator Methods**
+          - Add missing `is_uuid_format()` method to CitiBikeProbabilityCalculator class
+          - Implement UUID format detection logic (36 chars with hyphens)
+          - Add unit tests for UUID format validation
+          - Ensure method works with both UUID and station name inputs
+       
+       ✅ 7.3. **Fix FastAPI TestClient Configuration**
+          - Correct TestClient instantiation in conftest.py fixtures
+          - Update test_client fixture to use proper FastAPI TestClient syntax
+          - Fix app import and configuration for test environment
+          - Ensure TestClient works with PostgreSQL database connections
+          - Resolve httpx version compatibility issues (downgraded to 0.24.1)
+          - Fix Python path issues in conftest.py by adding backend directory to sys.path
+
+       ✅ 7.4. **Update Test Documentation and Automation Rules**
+          - Update TESTING.md with specific CitiBike test infrastructure details
+          - Update .cursor/rules/test-automation.mdc with actual test files and commands
+          - Add specific troubleshooting guides for common test failures
+          - Document AI agent-specific test execution guidelines
+          - Include critical setup requirements and environment variables
+          - Add test file organization and naming conventions
+
+12. **Test Suite Implementation**
+    - Define critical test scenarios (see section 8.1)
+    - Set up testing framework (Jest/React Testing Library for frontend, pytest for backend)
+    - Implement automated tests for core functionality
+    - Add simple test automation (no complex CI/CD for MVP)
 
 **Deliverables:**
-- Simplified single-route application
-- Clear app description
-- Working stations combobox with search
-- Verified real data usage
-- Comprehensive test suite
-- Simple test automation
+- Working station mapping table in local database
+- Updated backend API using mapping table
+- Production database with mapping table
+- Verified probability calculations working
+- Complete end-to-end functionality
+- Comprehensive test infrastructure with automated test execution
+- Test coverage reporting and monitoring
+- Cursor AI rule for test automation
+- Complete test documentation and guidelines
 
 ## 3. Simplified Technical Architecture
 
@@ -316,6 +473,13 @@ CREATE TABLE stations (
     longitude DECIMAL(11, 8)
 );
 
+-- Station mapping table (links UUID to numeric station IDs)
+CREATE TABLE station_mapping (
+    uuid_station_id VARCHAR(50) PRIMARY KEY,
+    numeric_station_id VARCHAR(50) NOT NULL,
+    station_name VARCHAR(255) NOT NULL
+);
+
 -- Trips table (simplified)
 CREATE TABLE trips (
     id SERIAL PRIMARY KEY,
@@ -330,6 +494,7 @@ CREATE TABLE trips (
 CREATE INDEX idx_trips_bike_id ON trips(bike_id);
 CREATE INDEX idx_trips_stations ON trips(start_station_id, end_station_id);
 CREATE INDEX idx_trips_time ON trips(started_at);
+CREATE INDEX idx_station_mapping_numeric ON station_mapping(numeric_station_id);
 ```
 
 ### 3.4 API Endpoints (MVP)
