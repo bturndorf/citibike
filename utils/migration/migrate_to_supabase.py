@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Local PostgreSQL to Supabase Migration Script
+Fast Local PostgreSQL to Supabase Migration Script using COPY
 
 This script migrates data from local PostgreSQL database to Supabase
-for the Railway to Vercel + Supabase migration.
+using PostgreSQL's native COPY command for maximum performance.
 
 Usage:
     python migrate_to_supabase.py
@@ -18,8 +18,13 @@ import os
 import sys
 import psycopg2
 import time
+import io
 from datetime import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add backend directory to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'backend'))
@@ -45,6 +50,31 @@ def get_database_connections():
     except Exception as e:
         print(f"❌ Error connecting to databases: {e}")
         return None, None
+
+def clear_supabase_tables(supabase_conn):
+    """Clear existing data from Supabase tables."""
+    try:
+        cursor = supabase_conn.cursor()
+        
+        print("🧹 Clearing existing data from Supabase tables...")
+        
+        # Clear tables in reverse dependency order
+        tables_to_clear = ['trips', 'station_mapping', 'stations']
+        
+        for table in tables_to_clear:
+            cursor.execute(f"TRUNCATE TABLE {table} CASCADE")
+            print(f"   ✅ Cleared {table} table")
+        
+        supabase_conn.commit()
+        cursor.close()
+        
+        print("✅ All Supabase tables cleared successfully")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error clearing Supabase tables: {e}")
+        supabase_conn.rollback()
+        return False
 
 def create_supabase_schema(supabase_conn):
     """Create the database schema in Supabase."""
@@ -100,8 +130,8 @@ def create_supabase_schema(supabase_conn):
         supabase_conn.rollback()
         return False
 
-def migrate_table_data(local_conn, supabase_conn, table_name, batch_size=1000):
-    """Migrate data from local table to Supabase table."""
+def migrate_table_with_copy(local_conn, supabase_conn, table_name):
+    """Migrate data from local table to Supabase table using COPY."""
     try:
         local_cursor = local_conn.cursor()
         supabase_cursor = supabase_conn.cursor()
@@ -121,40 +151,49 @@ def migrate_table_data(local_conn, supabase_conn, table_name, batch_size=1000):
             columns.remove('id')
         
         columns_str = ', '.join(columns)
-        placeholders = ', '.join(['%s'] * len(columns))
         
-        # Migrate data in batches
-        offset = 0
-        migrated_rows = 0
+        # Export data from local database using COPY TO
+        print(f"   📤 Exporting data from local {table_name}...")
+        start_time = time.time()
         
-        while offset < total_rows:
-            # Fetch batch from local database
-            local_cursor.execute(f"SELECT {columns_str} FROM {table_name} ORDER BY id LIMIT {batch_size} OFFSET {offset}")
-            batch = local_cursor.fetchall()
-            
-            if not batch:
-                break
-            
-            # Insert batch into Supabase
-            supabase_cursor.executemany(
-                f"INSERT INTO {table_name} ({columns_str}) VALUES ({placeholders})",
-                batch
-            )
-            
-            migrated_rows += len(batch)
-            offset += batch_size
-            
-            # Progress update
-            progress = (migrated_rows / total_rows) * 100
-            print(f"   Progress: {migrated_rows:,}/{total_rows:,} rows ({progress:.1f}%)")
-            
-            # Commit every batch
-            supabase_conn.commit()
+        # Create a buffer to hold the CSV data
+        csv_buffer = io.StringIO()
         
+        # Use COPY TO to export data to CSV format
+        local_cursor.copy_expert(
+            f"COPY {table_name} ({columns_str}) TO STDOUT WITH CSV",
+            csv_buffer
+        )
+        
+        export_time = time.time() - start_time
+        print(f"   ✅ Exported {total_rows:,} rows in {export_time:.1f} seconds")
+        
+        # Import data to Supabase using COPY FROM
+        print(f"   📥 Importing data to Supabase {table_name}...")
+        start_time = time.time()
+        
+        # Reset buffer position to beginning
+        csv_buffer.seek(0)
+        
+        # Use COPY FROM to import data from CSV format
+        supabase_cursor.copy_expert(
+            f"COPY {table_name} ({columns_str}) FROM STDOUT WITH CSV",
+            csv_buffer
+        )
+        
+        # Commit the transaction
+        supabase_conn.commit()
+        
+        import_time = time.time() - start_time
+        print(f"   ✅ Imported {total_rows:,} rows in {import_time:.1f} seconds")
+        
+        # Close buffer and cursors
+        csv_buffer.close()
         local_cursor.close()
         supabase_cursor.close()
         
-        print(f"✅ Successfully migrated {migrated_rows:,} rows from {table_name}")
+        total_time = export_time + import_time
+        print(f"✅ Successfully migrated {total_rows:,} rows from {table_name} in {total_time:.1f} seconds")
         return True
         
     except Exception as e:
@@ -248,7 +287,7 @@ def test_supabase_queries(supabase_conn):
 
 def main():
     """Main migration function."""
-    print("🚀 Starting local PostgreSQL to Supabase migration...")
+    print("🚀 Starting FAST local PostgreSQL to Supabase migration using COPY...")
     print("=" * 80)
     
     # Get database connections
@@ -261,21 +300,26 @@ def main():
     
     print("✅ Connected to both local and Supabase databases")
     
+    # Clear existing data from Supabase
+    if not clear_supabase_tables(supabase_conn):
+        print("❌ Failed to clear Supabase tables")
+        return False
+    
     # Create Supabase schema
     print("\n📋 Creating Supabase database schema...")
     if not create_supabase_schema(supabase_conn):
         print("❌ Failed to create Supabase schema")
         return False
     
-    # Migrate data tables
+    # Migrate data tables using COPY
     tables_to_migrate = ['stations', 'station_mapping', 'trips']
     
-    print("\n📊 Starting data migration...")
+    print("\n📊 Starting fast data migration using COPY...")
     start_time = time.time()
     
     for table in tables_to_migrate:
         print(f"\n🔄 Migrating {table}...")
-        if not migrate_table_data(local_conn, supabase_conn, table):
+        if not migrate_table_with_copy(local_conn, supabase_conn, table):
             print(f"❌ Failed to migrate {table}")
             return False
     
@@ -297,7 +341,7 @@ def main():
     supabase_conn.close()
     
     print("\n" + "=" * 80)
-    print("✅ Local PostgreSQL to Supabase migration completed successfully!")
+    print("✅ FAST local PostgreSQL to Supabase migration completed successfully!")
     print(f"⏱️  Total migration time: {migration_time:.1f} seconds")
     print("\n🚀 Ready for Vercel deployment!")
     return True
