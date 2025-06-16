@@ -5,11 +5,11 @@ alwaysApply: false
 ---
 # PostgreSQL Database Rules
 
-Rules for ensuring this CitiBike project uses PostgreSQL instead of SQLite for all database operations.
+Rules for ensuring this CitiBike project uses PostgreSQL instead of SQLite for all database operations, including terminal commands, scripts, and local development.
 
 <rule>
 name: postgresql_database_usage
-description: Standards for using PostgreSQL instead of SQLite in the CitiBike project
+description: Standards for using PostgreSQL instead of SQLite in the CitiBike project - comprehensive coverage for all database interactions
 filters:
   # Match Python files that might contain database code
   - type: file_extension
@@ -26,21 +26,31 @@ filters:
   # Match database connection strings
   - type: content
     pattern: "(DATABASE_URL|db_url|connection_string)"
+  # Match terminal commands
+  - type: content
+    pattern: "(sqlite3|\.db|\.sqlite)"
   # Match file creation and modification events
   - type: event
     pattern: "file_create|file_modify"
+  # Match terminal command execution
+  - type: event
+    pattern: "terminal_command"
 
 actions:
   - type: reject
     conditions:
-      - pattern: "sqlite://|\.db$|sqlite3\.|SQLite"
-        message: "This project uses PostgreSQL, not SQLite. Use Railway PostgreSQL database instead."
+      - pattern: "sqlite://|\.db$|sqlite3\.|SQLite|sqlite3 "
+        message: "This project uses PostgreSQL, not SQLite. Use Railway PostgreSQL database or local PostgreSQL instead."
+      - pattern: "sqlite3.*\.db|\.tables|\.schema|\.dump"
+        message: "Use PostgreSQL commands (psql) and syntax instead of SQLite commands. Use \dt for tables, \d for schema, pg_dump for backups."
+      - pattern: "import sqlite3|sqlite3\.connect"
+        message: "Use PostgreSQL libraries (psycopg2, asyncpg) and SQLAlchemy instead of sqlite3. Import psycopg2 or use SQLAlchemy with DATABASE_URL."
 
   - type: suggest
     message: |
       When working with databases in this CitiBike project:
 
-      ## PostgreSQL Database Standards
+      ## PostgreSQL Database Standards - Comprehensive
 
       ### 1. Database Configuration
 
@@ -49,6 +59,7 @@ actions:
       - Connection: Use `psycopg2` or `asyncpg` for Python
       - Never use SQLite files (`.db` files)
       - Never use `sqlite://` connection strings
+      - Never use `sqlite3` terminal commands
 
       **Correct Database Setup:**
       ```python
@@ -67,22 +78,153 @@ actions:
       
       # Wrong - SQLite in-memory
       engine = create_engine("sqlite:///:memory:")
+      
+      # Wrong - sqlite3 terminal command
+      # sqlite3 backend/dev.db ".tables"
       ```
 
-      ### 2. Database File Management
+      ### 2. Terminal Commands - PostgreSQL Only
+
+      **❌ Forbidden SQLite Commands:**
+      ```bash
+      # Never use these:
+      sqlite3 backend/dev.db ".tables"
+      sqlite3 backend/dev.db "SELECT * FROM stations"
+      sqlite3 backend/dev.db ".schema"
+      sqlite3 backend/dev.db ".dump"
+      ```
+
+      **✅ Correct PostgreSQL Commands:**
+      ```bash
+      # Use these instead:
+      # Connect to Railway PostgreSQL
+      railway connect
+      psql $DATABASE_URL
+      
+      # Or for local PostgreSQL
+      psql postgresql://localhost:5432/citibike_dev
+      
+      # Common PostgreSQL commands:
+      \dt                    # List tables (equivalent to .tables)
+      \d stations           # Describe table (equivalent to .schema)
+      SELECT * FROM stations LIMIT 5;  # Query data
+      \l                    # List databases
+      \q                    # Quit psql
+      ```
+
+      ### 3. PostgreSQL-Specific Syntax and Tools
+
+      **Always use PostgreSQL syntax and tools:**
+      ```bash
+      # ✅ Correct - PostgreSQL commands
+      psql dev -c "SELECT COUNT(*) FROM trips;"           # Query with psql
+      psql dev -c "\dt"                                   # List tables
+      psql dev -c "\d stations"                          # Describe table
+      psql dev -c "SELECT version();"                    # Check PostgreSQL version
+      
+      # ✅ Correct - PostgreSQL-specific syntax
+      SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'stations');
+      SELECT COUNT(*) FROM stations;
+      SELECT * FROM stations LIMIT 5;
+      
+      # ❌ Wrong - SQLite commands and syntax
+      # sqlite3 dev.db ".tables"
+      # sqlite3 dev.db "SELECT COUNT(*) FROM stations;"
+      # sqlite3 dev.db ".schema stations"
+      ```
+
+      **PostgreSQL vs SQLite command mapping:**
+      - SQLite `.tables` → PostgreSQL `\dt`
+      - SQLite `.schema` → PostgreSQL `\d table_name`
+      - SQLite `.dump` → PostgreSQL `pg_dump`
+      - SQLite `sqlite3 file.db` → PostgreSQL `psql database_name`
+
+      ### 4. Database Inspection and Debugging
+
+      **When debugging database issues:**
+      ```bash
+      # ✅ Correct - Use PostgreSQL
+      railway connect
+      psql $DATABASE_URL -c "\dt"
+      psql $DATABASE_URL -c "SELECT COUNT(*) FROM stations;"
+      psql $DATABASE_URL -c "SELECT * FROM stations LIMIT 5;"
+      
+      # ❌ Wrong - Don't use SQLite
+      # sqlite3 backend/dev.db ".tables"
+      # sqlite3 backend/dev.db "SELECT COUNT(*) FROM stations;"
+      ```
+
+      **Database connection testing:**
+      ```python
+      # ✅ Correct - Test PostgreSQL connection
+      import psycopg2
+      import os
+      
+      try:
+          conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+          cursor = conn.cursor()
+          cursor.execute("SELECT version();")
+          print("PostgreSQL connected successfully")
+          conn.close()
+      except Exception as e:
+          print(f"PostgreSQL connection failed: {e}")
+      ```
+
+      ### 5. Script Database Operations
+
+      **Database inspection in scripts:**
+      ```python
+      # ✅ Correct - PostgreSQL table inspection
+      import os
+      from sqlalchemy import create_engine, text
+      
+      DATABASE_URL = os.getenv("DATABASE_URL")
+      engine = create_engine(DATABASE_URL)
+      
+      with engine.connect() as conn:
+          # Check if table exists
+          result = conn.execute(text("""
+              SELECT EXISTS (
+                  SELECT FROM information_schema.tables 
+                  WHERE table_name = 'stations'
+              );
+          """))
+          table_exists = result.scalar()
+          
+          if table_exists:
+              # Get table info
+              result = conn.execute(text("SELECT COUNT(*) FROM stations"))
+              count = result.scalar()
+              print(f"Stations table has {count} records")
+          else:
+              print("Stations table does not exist")
+      ```
+
+      **❌ Wrong - SQLite table inspection:**
+      ```python
+      # Don't use this:
+      import sqlite3
+      conn = sqlite3.connect("backend/dev.db")
+      cursor = conn.cursor()
+      cursor.execute("SELECT COUNT(*) FROM stations")
+      ```
+
+      ### 6. Database File Management
 
       **Database files to avoid:**
       - `dev.db` (SQLite file)
       - `test.db` (SQLite file)
       - `*.db` files (any SQLite database)
       - `sqlite3` imports or usage
+      - Any SQLite database files
 
       **Database files to use:**
       - Railway PostgreSQL database (configured via `DATABASE_URL`)
       - Database migration files (Alembic)
       - Database schema files (SQL DDL)
+      - PostgreSQL dump files (`.sql`)
 
-      ### 3. Environment Configuration
+      ### 7. Environment Configuration
 
       **Required Environment Variables:**
       ```bash
@@ -101,7 +243,7 @@ actions:
       └── railway.json          # Railway deployment config
       ```
 
-      ### 4. Database Dependencies
+      ### 8. Database Dependencies
 
       **Required Python Packages:**
       ```python
@@ -117,7 +259,7 @@ actions:
       # sqlite3  # Built-in, but don't use
       ```
 
-      ### 5. Database Connection Patterns
+      ### 9. Database Connection Patterns
 
       **FastAPI Database Setup:**
       ```python
@@ -145,7 +287,7 @@ actions:
           # ... other fields
       ```
 
-      ### 6. Database Migrations
+      ### 10. Database Migrations
 
       **Alembic Configuration:**
       ```python
@@ -162,7 +304,7 @@ actions:
       cd backend && alembic upgrade head
       ```
 
-      ### 7. Testing Database Setup
+      ### 11. Testing Database Setup
 
       **Test Database Configuration:**
       ```python
@@ -186,7 +328,7 @@ actions:
       TEST_DATABASE_URL=postgresql://localhost:5432/citibike_test
       ```
 
-      ### 8. Railway Deployment
+      ### 12. Railway Deployment
 
       **Railway Configuration:**
       ```json
@@ -209,7 +351,7 @@ actions:
       - `PORT`: Railway port configuration
       - `RAILWAY_ENVIRONMENT`: Deployment environment
 
-      ### 9. Database Schema Management
+      ### 13. Database Schema Management
 
       **Schema Files:**
       ```sql
@@ -231,7 +373,7 @@ actions:
       CREATE INDEX idx_stations_location ON stations(latitude, longitude);
       ```
 
-      ### 10. Data Types and Constraints
+      ### 14. Data Types and Constraints
 
       **PostgreSQL-Specific Features:**
       ```python
@@ -249,7 +391,7 @@ actions:
           is_active = Column(Boolean, default=True)
       ```
 
-      ### 11. Performance Considerations
+      ### 15. Performance Considerations
 
       **PostgreSQL Optimizations:**
       - Use appropriate indexes for query patterns
@@ -272,7 +414,7 @@ actions:
       )
       ```
 
-      ### 12. Error Handling
+      ### 16. Error Handling
 
       **Database Error Handling:**
       ```python
@@ -290,7 +432,7 @@ actions:
           raise HTTPException(status_code=500, detail="Database error")
       ```
 
-      ### 13. Backup and Recovery
+      ### 17. Backup and Recovery
 
       **Database Backups:**
       - Use Railway's built-in backup features
@@ -305,7 +447,7 @@ actions:
       pg_dump $DATABASE_URL > data/backups/backup_$(date +%Y%m%d).sql
       ```
 
-      ### 14. Migration from SQLite
+      ### 18. Migration from SQLite
 
       **If migrating from SQLite:**
       1. Export data from SQLite: `sqlite3 dev.db .dump > data/backup.sql`
@@ -324,6 +466,112 @@ actions:
       -- Convert SQLite TEXT to PostgreSQL VARCHAR or TEXT
       -- SQLite: name TEXT
       -- PostgreSQL: name VARCHAR(255) or name TEXT
+      ```
+
+      ### 19. Startup Script Database Handling
+
+      **Database setup in startup scripts:**
+      ```python
+      # ✅ Correct - PostgreSQL table inspection
+      def check_database_tables():
+          import os
+          from sqlalchemy import create_engine, text
+          
+          DATABASE_URL = os.getenv("DATABASE_URL")
+          if not DATABASE_URL:
+              print("❌ DATABASE_URL not set")
+              return False
+          
+          try:
+              engine = create_engine(DATABASE_URL)
+              with engine.connect() as conn:
+                  # Check if stations table exists
+                  result = conn.execute(text("""
+                      SELECT EXISTS (
+                          SELECT FROM information_schema.tables 
+                          WHERE table_name = 'stations'
+                      );
+                  """))
+                  table_exists = result.scalar()
+                  
+                  if table_exists:
+                      result = conn.execute(text("SELECT COUNT(*) FROM stations"))
+                      count = result.scalar()
+                      print(f"✅ Stations table exists with {count} records")
+                      return True
+                  else:
+                      print("❌ Stations table does not exist")
+                      return False
+          except Exception as e:
+              print(f"❌ Database connection failed: {e}")
+              return False
+      ```
+
+      **❌ Wrong - SQLite table inspection:**
+      ```python
+      # Don't use this in startup scripts:
+      import sqlite3
+      conn = sqlite3.connect("backend/dev.db")
+      cursor = conn.cursor()
+      cursor.execute("SELECT COUNT(*) FROM stations")
+      ```
+
+      ### 20. Local Development Database
+
+      **Local PostgreSQL Setup:**
+      ```bash
+      # Install PostgreSQL locally (macOS)
+      brew install postgresql
+      brew services start postgresql
+      
+      # Create local database
+      createdb citibike_dev
+      
+      # Set local environment
+      export DATABASE_URL=postgresql://localhost:5432/citibike_dev
+      ```
+
+      **Local Database Commands:**
+      ```bash
+      # Connect to local PostgreSQL
+      psql postgresql://localhost:5432/citibike_dev
+      
+      # List tables
+      \dt
+      
+      # Query data
+      SELECT COUNT(*) FROM stations;
+      
+      # Describe table
+      \d stations
+      ```
+
+      ### 21. Database Troubleshooting
+
+      **When database issues occur:**
+      1. **Check connection**: Verify `DATABASE_URL` is set correctly
+      2. **Test connection**: Use `psql` or Python connection test
+      3. **Check tables**: Use PostgreSQL commands, not SQLite
+      4. **Verify schema**: Use `\dt` and `\d table_name` in PostgreSQL
+      5. **Check logs**: Look for PostgreSQL error messages
+      6. **Test queries**: Use PostgreSQL syntax, not SQLite
+
+      **Common troubleshooting commands:**
+      ```bash
+      # Test PostgreSQL connection
+      psql $DATABASE_URL -c "SELECT version();"
+      
+      # Check if database exists
+      psql $DATABASE_URL -c "\l"
+      
+      # List tables
+      psql $DATABASE_URL -c "\dt"
+      
+      # Check table structure
+      psql $DATABASE_URL -c "\d stations"
+      
+      # Test query
+      psql $DATABASE_URL -c "SELECT COUNT(*) FROM stations;"
       ```
 
 examples:
@@ -346,6 +594,14 @@ examples:
     output: "PostgreSQL database connection established"
 
   - input: |
+      # Wrong - SQLite terminal command
+      sqlite3 backend/dev.db ".tables"
+      
+      # Should be:
+      psql $DATABASE_URL -c "\dt"
+    output: "PostgreSQL table listing command used"
+
+  - input: |
       # Wrong - SQLite in requirements
       sqlite3
       
@@ -353,8 +609,35 @@ examples:
       psycopg2-binary==2.9.9
     output: "PostgreSQL dependency added correctly"
 
+  - input: |
+      # Wrong - SQLite table inspection in script
+      import sqlite3
+      conn = sqlite3.connect("backend/dev.db")
+      cursor = conn.cursor()
+      cursor.execute("SELECT COUNT(*) FROM stations")
+      
+      # Should be:
+      from sqlalchemy import create_engine, text
+      engine = create_engine(os.getenv("DATABASE_URL"))
+      with engine.connect() as conn:
+          result = conn.execute(text("SELECT COUNT(*) FROM stations"))
+          count = result.scalar()
+    output: "PostgreSQL table inspection implemented correctly"
+
+  - input: |
+      # Wrong - SQLite database inspection commands
+      sqlite3 dev.db ".tables"
+      sqlite3 dev.db "SELECT COUNT(*) FROM trips;"
+      sqlite3 dev.db ".schema stations"
+      
+      # Should be:
+      psql dev -c "\dt"
+      psql dev -c "SELECT COUNT(*) FROM trips;"
+      psql dev -c "\d stations"
+    output: "PostgreSQL database inspection commands used correctly"
+
 metadata:
   priority: high
-  version: 1.0
-  tags: ["database", "postgresql", "railway", "sqlite-migration", "deployment", "configuration"]
+  version: 2.0
+  tags: ["database", "postgresql", "railway", "sqlite-migration", "deployment", "configuration", "terminal-commands", "local-development", "startup-scripts"]
 </rule>

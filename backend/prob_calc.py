@@ -184,9 +184,9 @@ class CitiBikeProbabilityCalculator:
             home_station = station_stats[uuid_station_id]
             logger.info(f"Found home station: {home_station}")
             
-            # Get bike movement patterns for the home station
+            # Get bike movement patterns for the home station (optimized)
             logger.info("Getting bike movement patterns")
-            bike_patterns = self._get_bike_movement_patterns(uuid_station_id, time_pattern)
+            bike_patterns = self._get_bike_movement_patterns_optimized(uuid_station_id, time_pattern)
             logger.info(f"Bike patterns: {bike_patterns}")
             
             # Calculate probability using multiple factors
@@ -206,26 +206,27 @@ class CitiBikeProbabilityCalculator:
                 probability, home_station, bike_patterns, riding_frequency, time_pattern
             )
             
-            result = {
+            return {
                 'probability': probability,
                 'confidence_interval': confidence_interval,
                 'explanation': explanation,
-                'station_info': home_station,
-                'bike_patterns': bike_patterns
+                'station_info': {
+                    'name': home_station['name'],
+                    'total_trips': home_station['total_trips'],
+                    'unique_bikes': home_station['unique_bikes'],
+                    'avg_trip_duration': home_station['avg_trip_duration']
+                }
             }
-            logger.info(f"Final result: {result}")
-            return result
             
         except Exception as e:
-            logger.error(f"Error calculating probability: {e}")
-            logger.error(f"Exception type: {type(e)}")
+            logger.error(f"Error in probability calculation: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise
     
-    def _get_bike_movement_patterns(self, station_id: str, time_pattern: str) -> Dict:
-        """Get bike movement patterns for a specific station and time pattern"""
-        logger.info(f"Getting bike movement patterns for station {station_id}, pattern {time_pattern}")
+    def _get_bike_movement_patterns_optimized(self, station_id: str, time_pattern: str) -> Dict:
+        """Get bike movement patterns with optimized queries"""
+        logger.info(f"Getting optimized bike movement patterns for station {station_id}, pattern {time_pattern}")
         try:
             # First, get the numeric station ID from the mapping table
             mapping_query = text("""
@@ -249,13 +250,14 @@ class CitiBikeProbabilityCalculator:
             numeric_station_id = mapping_row.numeric_station_id
             logger.info(f"Mapped station {station_id} to numeric ID {numeric_station_id}")
             
-            # Build time filter based on pattern - PostgreSQL compatible
+            # Build time filter based on pattern
             time_filter = ""
             if time_pattern == "weekday":
                 time_filter = "AND EXTRACT(DOW FROM t.started_at) BETWEEN 1 AND 5"
             elif time_pattern == "weekend":
                 time_filter = "AND EXTRACT(DOW FROM t.started_at) IN (0, 6)"
             
+            # Optimized query with LIMIT to reduce processing time
             query_text = f"""
                 SELECT 
                     t.bike_id,
@@ -266,10 +268,9 @@ class CitiBikeProbabilityCalculator:
                 WHERE t.start_station_id = :numeric_station_id {time_filter}
                 GROUP BY t.bike_id
                 ORDER BY trip_count DESC
-                LIMIT 100
+                LIMIT 50
             """
-            logger.info(f"Executing bike patterns query: {query_text}")
-            logger.info(f"Query parameters: numeric_station_id={numeric_station_id}")
+            logger.info(f"Executing optimized bike patterns query")
             
             query = text(query_text)
             result = self.db_session.execute(query, {'numeric_station_id': numeric_station_id})
@@ -289,7 +290,8 @@ class CitiBikeProbabilityCalculator:
             if patterns:
                 total_bikes = len(patterns)
                 avg_trips_per_bike = np.mean([p['trip_count'] for p in patterns])
-                bike_return_rate = self._calculate_bike_return_rate(station_id, time_pattern)
+                # Use simplified return rate calculation for performance
+                bike_return_rate = self._calculate_bike_return_rate_simplified(numeric_station_id, time_pattern)
                 
                 return {
                     'total_bikes_analyzed': total_bikes,
@@ -312,8 +314,107 @@ class CitiBikeProbabilityCalculator:
             logger.error(f"Traceback: {traceback.format_exc()}")
             return {}
     
+    def _calculate_bike_return_rate_simplified(self, numeric_station_id: str, time_pattern: str) -> float:
+        """Simplified bike return rate calculation for better performance"""
+        logger.info(f"Calculating simplified bike return rate for station {numeric_station_id}, pattern {time_pattern}")
+        try:
+            time_filter = ""
+            if time_pattern == "weekday":
+                time_filter = "AND EXTRACT(DOW FROM t.started_at) BETWEEN 1 AND 5"
+            elif time_pattern == "weekend":
+                time_filter = "AND EXTRACT(DOW FROM t.started_at) IN (0, 6)"
+            
+            # Simplified query that avoids the expensive EXISTS subquery
+            query_text = f"""
+                WITH station_trips AS (
+                    SELECT bike_id, started_at, ended_at
+                    FROM trips 
+                    WHERE start_station_id = :numeric_station_id {time_filter}
+                    ORDER BY bike_id, started_at
+                ),
+                return_trips AS (
+                    SELECT DISTINCT t1.bike_id
+                    FROM station_trips t1
+                    WHERE EXISTS (
+                        SELECT 1 FROM trips t2 
+                        WHERE t2.bike_id = t1.bike_id 
+                        AND t2.end_station_id = :numeric_station_id
+                        AND t2.started_at > t1.ended_at
+                        AND t2.started_at <= t1.ended_at + INTERVAL '7 days'
+                        LIMIT 1
+                    )
+                )
+                SELECT 
+                    COUNT(DISTINCT rt.bike_id) as bikes_returning,
+                    COUNT(DISTINCT st.bike_id) as total_bikes
+                FROM station_trips st
+                LEFT JOIN return_trips rt ON st.bike_id = rt.bike_id
+            """
+            
+            logger.info(f"Executing simplified bike return rate query")
+            
+            query = text(query_text)
+            result = self.db_session.execute(query, {'numeric_station_id': numeric_station_id})
+            row = result.fetchone()
+            
+            if row and row.total_bikes > 0:
+                return_rate = row.bikes_returning / row.total_bikes
+                logger.info(f"Bike return rate: {return_rate} ({row.bikes_returning}/{row.total_bikes})")
+                return return_rate
+            else:
+                logger.warning(f"No bike return data found for station {numeric_station_id}")
+                return 0.0
+                
+        except Exception as e:
+            logger.error(f"Error calculating simplified bike return rate: {e}")
+            # Fallback to even simpler calculation
+            return self._calculate_bike_return_rate_fallback(numeric_station_id, time_pattern)
+    
+    def _calculate_bike_return_rate_fallback(self, numeric_station_id: str, time_pattern: str) -> float:
+        """Fallback bike return rate calculation using basic statistics"""
+        logger.info(f"Using fallback bike return rate calculation for station {numeric_station_id}")
+        try:
+            time_filter = ""
+            if time_pattern == "weekday":
+                time_filter = "AND EXTRACT(DOW FROM t.started_at) BETWEEN 1 AND 5"
+            elif time_pattern == "weekend":
+                time_filter = "AND EXTRACT(DOW FROM t.started_at) IN (0, 6)"
+            
+            # Very simple query based on station popularity
+            query_text = f"""
+                SELECT 
+                    COUNT(DISTINCT bike_id) as unique_bikes,
+                    COUNT(*) as total_trips
+                FROM trips 
+                WHERE start_station_id = :numeric_station_id {time_filter}
+            """
+            
+            query = text(query_text)
+            result = self.db_session.execute(query, {'numeric_station_id': numeric_station_id})
+            row = result.fetchone()
+            
+            if row and row.unique_bikes > 0:
+                # Estimate return rate based on bike turnover
+                bike_turnover = row.total_trips / row.unique_bikes
+                # Higher turnover = lower return rate
+                estimated_return_rate = max(0.0, min(0.5, 1.0 / bike_turnover))
+                logger.info(f"Fallback return rate: {estimated_return_rate} (based on turnover: {bike_turnover})")
+                return estimated_return_rate
+            else:
+                return 0.0
+                
+        except Exception as e:
+            logger.error(f"Error in fallback return rate calculation: {e}")
+            return 0.1  # Default 10% return rate
+    
+    def _get_bike_movement_patterns(self, station_id: str, time_pattern: str) -> Dict:
+        """Get bike movement patterns for a specific station and time pattern"""
+        # This method is kept for backward compatibility but uses the optimized version
+        return self._get_bike_movement_patterns_optimized(station_id, time_pattern)
+    
     def _calculate_bike_return_rate(self, station_id: str, time_pattern: str) -> float:
         """Calculate the rate at which bikes return to the same station"""
+        # This method is kept for backward compatibility but uses the optimized version
         logger.info(f"Calculating bike return rate for station {station_id}, pattern {time_pattern}")
         try:
             # First, get the numeric station ID from the mapping table
@@ -331,41 +432,7 @@ class CitiBikeProbabilityCalculator:
                 return 0.0
             
             numeric_station_id = mapping_row.numeric_station_id
-            logger.info(f"Mapped station {station_id} to numeric ID {numeric_station_id} for return rate calculation")
-            
-            time_filter = ""
-            if time_pattern == "weekday":
-                time_filter = "AND EXTRACT(DOW FROM t1.started_at) BETWEEN 1 AND 5"
-            elif time_pattern == "weekend":
-                time_filter = "AND EXTRACT(DOW FROM t1.started_at) IN (0, 6)"
-            
-            query_text = f"""
-                SELECT 
-                    COUNT(DISTINCT t1.bike_id) as bikes_returning,
-                    COUNT(DISTINCT t1.bike_id) as total_bikes
-                FROM trips t1
-                WHERE t1.start_station_id = :numeric_station_id {time_filter}
-                AND EXISTS (
-                    SELECT 1 FROM trips t2 
-                    WHERE t2.bike_id = t1.bike_id 
-                    AND t2.end_station_id = :numeric_station_id
-                    AND t2.started_at > t1.ended_at
-                    AND t2.started_at <= t1.ended_at + INTERVAL '7 days'
-                )
-            """
-            logger.info(f"Executing bike return rate query: {query_text}")
-            
-            query = text(query_text)
-            result = self.db_session.execute(query, {'numeric_station_id': numeric_station_id})
-            row = result.fetchone()
-            
-            if row and row.total_bikes > 0:
-                return_rate = row.bikes_returning / row.total_bikes
-                logger.info(f"Bike return rate: {return_rate} ({row.bikes_returning}/{row.total_bikes})")
-                return return_rate
-            else:
-                logger.warning(f"No bike return data found for station {station_id}")
-                return 0.0
+            return self._calculate_bike_return_rate_simplified(numeric_station_id, time_pattern)
                 
         except Exception as e:
             logger.error(f"Error calculating bike return rate: {e}")

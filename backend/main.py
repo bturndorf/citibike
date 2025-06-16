@@ -78,14 +78,100 @@ def get_db():
     finally:
         db.close()
 
+def ensure_database_indexes():
+    """Ensure all required database indexes exist for optimal performance"""
+    try:
+        with engine.connect() as conn:
+            # Check if indexes exist
+            index_check_query = text("""
+                SELECT indexname 
+                FROM pg_indexes 
+                WHERE tablename IN ('trips', 'station_mapping')
+                AND indexname IN (
+                    'idx_trips_station_time',
+                    'idx_trips_bike_end_time', 
+                    'idx_trips_end_station_time',
+                    'idx_station_mapping_uuid',
+                    'idx_station_mapping_name'
+                )
+            """)
+            
+            result = conn.execute(index_check_query)
+            existing_indexes = {row.indexname for row in result}
+            
+            required_indexes = {
+                'idx_trips_station_time',
+                'idx_trips_bike_end_time',
+                'idx_trips_end_station_time', 
+                'idx_station_mapping_uuid',
+                'idx_station_mapping_name'
+            }
+            
+            missing_indexes = required_indexes - existing_indexes
+            
+            if missing_indexes:
+                logger.warning(f"Missing indexes: {missing_indexes}")
+                logger.warning("Please run database migrations: alembic upgrade head")
+                logger.warning("Or set AUTO_CREATE_INDEXES=true to create them automatically")
+                
+                # Auto-create indexes if environment variable is set
+                if os.getenv("AUTO_CREATE_INDEXES", "false").lower() == "true":
+                    logger.info("Auto-creating missing indexes...")
+                    create_missing_indexes(conn, missing_indexes)
+                else:
+                    logger.warning("Indexes missing but auto-creation disabled")
+            else:
+                logger.info("All required database indexes are present")
+                
+    except Exception as e:
+        logger.error(f"Error checking database indexes: {e}")
+
+def create_missing_indexes(conn, missing_indexes):
+    """Create missing indexes for performance optimization"""
+    index_definitions = {
+        'idx_trips_station_time': """
+            CREATE INDEX IF NOT EXISTS idx_trips_station_time 
+            ON trips(start_station_id, started_at)
+        """,
+        'idx_trips_bike_end_time': """
+            CREATE INDEX IF NOT EXISTS idx_trips_bike_end_time 
+            ON trips(bike_id, end_station_id, started_at)
+        """,
+        'idx_trips_end_station_time': """
+            CREATE INDEX IF NOT EXISTS idx_trips_end_station_time 
+            ON trips(end_station_id, started_at)
+        """,
+        'idx_station_mapping_uuid': """
+            CREATE INDEX IF NOT EXISTS idx_station_mapping_uuid 
+            ON station_mapping(uuid_station_id)
+        """,
+        'idx_station_mapping_name': """
+            CREATE INDEX IF NOT EXISTS idx_station_mapping_name 
+            ON station_mapping(station_name)
+        """
+    }
+    
+    for index_name in missing_indexes:
+        if index_name in index_definitions:
+            try:
+                conn.execute(text(index_definitions[index_name]))
+                logger.info(f"Created index: {index_name}")
+            except Exception as e:
+                logger.error(f"Failed to create index {index_name}: {e}")
+
 # Test DB connection on startup
 @app.on_event("startup")
-def test_db_connection():
+async def startup_event():
+    """Initialize database connection and ensure indexes on startup"""
     try:
         with engine.connect() as conn:
             logger.info("Database connection successful.")
+        
+        # Ensure database indexes exist
+        ensure_database_indexes()
+        
     except Exception as e:
-        logger.error(f"Database connection failed: {e}")
+        logger.error(f"Database initialization failed: {e}")
 
 # Health check endpoint
 @app.get("/api/health", response_model=HealthResponse)
