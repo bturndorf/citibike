@@ -2,36 +2,43 @@
 
 ## 1. Project Overview
 
-### 1.1 MVP Infrastructure: Railway (Recommended)
-- **Platform**: Railway.app (simple deployment)
-- **Database**: Railway PostgreSQL (included)
-- **Backend**: Python FastAPI on Railway
-- **Frontend**: Next.js deployed to Railway
+### 1.1 MVP Infrastructure: Vercel + Supabase (Recommended)
+- **Platform**: Vercel.app (frontend) + Supabase.com (backend & database)
+- **Database**: Supabase PostgreSQL (managed, real-time)
+- **Backend**: Python FastAPI on Vercel Serverless Functions
+- **Frontend**: Next.js deployed to Vercel
 - **Deployment**: Simple git push (no complex CI/CD needed)
+
+**Migration Rationale:**
+- **Railway Issues**: Deploy failures, PostgreSQL service problems, storage constraints
+- **Vercel Benefits**: Excellent Next.js support, fast deployments, reliable infrastructure
+- **Supabase Benefits**: Better PostgreSQL management, real-time features, superior reliability
+- **Development Velocity**: Eliminate Railway debugging time, focus on application features
 
 ## 2. Detailed Task Breakdown (MVP)
 
 ### Phase 1: Infrastructure Setup
 
-#### Railway Setup
+#### Vercel + Supabase Setup
 **Tasks:**
-1. **Railway Account Setup**
-   - Create Railway account (railway.app)
+1. **Vercel Account Setup**
+   - Create Vercel account (vercel.com)
    - Connect GitHub repository
    - Set up new project
 
-2. **Database Setup**
-   - Add PostgreSQL service to Railway project
+2. **Supabase Database Setup**
+   - Create Supabase account (supabase.com)
+   - Create new project
    - Get connection string from dashboard
    - Test database connection
 
 3. **Basic Backend Deployment**
    - Create simple FastAPI "Hello World" app
-   - Deploy to Railway
+   - Deploy to Vercel Serverless Functions
    - Verify deployment works
 
 **Deliverables:**
-- Railway project with PostgreSQL database
+- Vercel project with Supabase database
 - Working backend endpoint
 - Basic deployment workflow
 
@@ -50,7 +57,7 @@
 3. **Environment Configuration**
    - Set up environment variables
    - Configure local vs production settings
-   - Set up Railway environment variables
+   - Set up Vercel and Supabase environment variables
 
 **Deliverables:**
 - Complete project structure
@@ -79,7 +86,7 @@
 #### Data Loading & Validation
 **Tasks:**
 1. **Database Population**
-   - Load processed data into Railway PostgreSQL
+   - Load processed data into Supabase PostgreSQL
    - Create indexes for performance
    - Validate data integrity
 
@@ -132,7 +139,7 @@
 3. **API Integration**
    - Connect all endpoints
    - Add basic caching
-   - Deploy to Railway
+   - Deploy to Vercel
 
 **Deliverables:**
 - Working probability API
@@ -194,28 +201,29 @@
 - Test results
 - Bug fixes
 
-#### Railway Deployment & Documentation
+#### Vercel + Supabase Deployment & Documentation
 **Tasks:**
-1. **Production Deployment to Railway**
-   - Deploy frontend to Railway
+1. **Production Deployment to Vercel + Supabase**
+   - Deploy frontend to Vercel
+   - Deploy backend to Vercel Serverless Functions
    - Configure production environment variables
-   - Set up Railway domains
+   - Set up Vercel domains
    - Test production deployment
    - Verify database connections in production
 
 2. **Documentation**
    - Create user documentation
    - Write technical documentation
-   - Create Railway deployment guide
+   - Create Vercel + Supabase deployment guide
    - Document environment variable setup
 
 3. **Final Testing & Launch**
-   - Production testing on Railway
+   - Production testing on Vercel + Supabase
    - User acceptance testing
    - Launch preparation
 
 **Deliverables:**
-- Production-ready application on Railway
+- Production-ready application on Vercel + Supabase
 - Complete documentation
 - Launch-ready system
 
@@ -524,35 +532,238 @@
 - Production-ready indexing implementation ✅ COMPLETED
 - Performance monitoring and validation results (in progress)
 
+### Phase 7: Railway to Vercel + Supabase Migration
+
+#### Platform Migration Planning
+**Tasks:**
+1. **Migration Assessment and Planning**
+   - **OBJECTIVE**: Migrate from Railway to Vercel + Supabase to resolve deployment issues
+   - **GOAL**: Eliminate Railway debugging time and improve development velocity
+   - **SCOPE**: Complete platform migration with zero data loss
+   
+   **Migration Rationale:**
+   - **Railway Issues**: Deploy failures, PostgreSQL service problems, storage constraints
+   - **Vercel Benefits**: Excellent Next.js support, fast deployments, reliable infrastructure
+   - **Supabase Benefits**: Better PostgreSQL management, real-time features, superior reliability
+   - **Development Velocity**: Eliminate Railway debugging time, focus on application features
+
+2. **Pre-Migration Data Backup**
+   - Export all data from Railway PostgreSQL (3.1M trips, 2,234 stations, station_mapping table)
+   - Create database schema backup (tables, indexes, constraints)
+   - Backup environment variables and configuration
+   - Document current Railway setup for rollback reference
+   - Verify data integrity before migration
+
+3. **Vercel + Supabase Setup**
+   - Create Vercel account and connect GitHub repository
+   - Create Supabase project and configure PostgreSQL database
+   - Set up Vercel project with Next.js and FastAPI serverless functions
+   - Configure environment variables in both platforms
+   - Test basic connectivity between Vercel and Supabase
+
+**Deliverables:**
+- Complete data backup from Railway
+- Vercel + Supabase project setup
+- Migration plan and rollback strategy
+
+#### Database Migration
+**Tasks:**
+1. **Supabase Database Schema Setup**
+   - Create database schema in Supabase (stations, trips, station_mapping tables)
+   - Set up database indexes for performance optimization
+   - Configure database constraints and relationships
+   - Test schema with sample data
+   - Verify PostgreSQL compatibility and features
+
+2. **Data Migration Execution**
+   - Import 3.1M trips from Railway backup to Supabase
+   - Import 2,234 stations and station_mapping data
+   - Verify data integrity after migration
+   - Test database queries and performance
+   - Create database indexes for optimal performance
+   - Validate all table relationships work correctly
+
+3. **Database Connection Updates**
+   - Update backend code to use Supabase PostgreSQL connection
+   - Update environment variables for Supabase DATABASE_URL
+   - Test database connectivity from local development
+   - Verify Alembic migrations work with Supabase
+   - Update test database configuration for Supabase
+
+**Deliverables:**
+- Migrated database with all data intact
+- Updated database connection configuration
+- Verified database performance and functionality
+
+#### Backend Migration
+**Tasks:**
+1. **FastAPI to Vercel Serverless Functions Migration**
+   - Convert FastAPI app to Vercel serverless functions
+   - Update API routes for Vercel serverless architecture
+   - Configure Vercel.json for Python runtime
+   - Update requirements.txt for Vercel compatibility
+   - Test API endpoints in Vercel environment
+
+2. **Environment Variable Migration**
+   - Migrate Railway environment variables to Vercel
+   - Update DATABASE_URL to point to Supabase
+   - Configure CORS settings for Vercel deployment
+   - Set up production environment variables
+   - Test environment variable access in Vercel
+
+3. **API Endpoint Testing**
+   - Test all API endpoints in Vercel environment
+   - Verify probability calculation endpoint works
+   - Test stations endpoint with Supabase data
+   - Validate error handling and response formats
+   - Performance testing with real CitiBike data
+
+**Deliverables:**
+- Working FastAPI backend on Vercel
+- All API endpoints functional with Supabase
+- Updated environment configuration
+
+#### Frontend Migration
+**Tasks:**
+1. **Next.js to Vercel Deployment**
+   - Deploy Next.js frontend to Vercel
+   - Update API endpoint URLs to point to Vercel backend
+   - Configure Vercel build settings for Next.js
+   - Set up environment variables for frontend
+   - Test frontend deployment and functionality
+
+2. **API Integration Updates**
+   - Update frontend API calls to use Vercel backend URLs
+   - Test station combobox with Supabase data
+   - Verify probability calculation workflow
+   - Test error handling and loading states
+   - Validate complete user journey
+
+3. **Frontend-Backend Integration Testing**
+   - Test complete user workflow from station selection to results
+   - Verify data flows correctly between frontend and backend
+   - Test with real CitiBike data from Supabase
+   - Validate responsive design and user experience
+   - Performance testing for large station lists
+
+**Deliverables:**
+- Deployed Next.js frontend on Vercel
+- Working frontend-backend integration
+- Complete user workflow validation
+
+#### Configuration and Documentation Updates
+**Tasks:**
+1. **Railway Configuration Removal**
+   - Remove all railway.json configuration files
+   - Delete Railway-specific deployment scripts
+   - Remove Railway CLI dependencies
+   - Clean up Railway environment variables
+   - Archive Railway-specific documentation
+
+2. **Vercel + Supabase Configuration**
+   - Create vercel.json configuration files
+   - Set up Supabase client configuration
+   - Configure build and deployment settings
+   - Set up environment variable management
+   - Create deployment automation scripts
+
+3. **Documentation Updates**
+   - Update PROJECT_PLAN.md with Vercel + Supabase architecture
+   - Replace old deployment guide with new deployment guides for Vercel + Supabase
+   - Update README.md with new platform information
+   - Update API documentation with new endpoints
+
+4. **Cursor Rules Updates**
+   - Update .cursor/rules/railway-cli-usage.mdc to Vercel/Supabase equivalents (if there is a Vercel or Supabase CLI)
+   - Update .cursor/rules/postgresql-database.mdc for Supabase specifics
+   - Create new rules for Vercel deployment and Supabase management
+   - Update test automation rules for new platform
+   - Remove Railway-specific rules and configurations
+
+**Deliverables:**
+- Clean codebase without Railway dependencies
+- Complete Vercel + Supabase configuration
+- Updated documentation and deployment guides
+- Updated Cursor rules for new platform
+
+#### Migration Verification and Rollback Planning
+**Tasks:**
+1. **Comprehensive Testing**
+   - End-to-end testing of complete application
+   - Performance testing with real CitiBike data
+   - Database query performance validation
+   - API response time testing
+   - User workflow validation
+
+2. **Rollback Strategy**
+   - Keep Railway deployment running during migration
+   - Document rollback procedures if issues arise
+   - Maintain Railway data backup for emergency restoration
+   - Test rollback procedures before final Railway shutdown
+   - Plan for quick reversion if critical issues discovered
+
+3. **Production Deployment**
+   - Deploy to Vercel + Supabase production environment
+   - Configure custom domains if needed
+   - Set up monitoring and error tracking
+   - Verify all functionality works in production
+   - Monitor performance and stability
+
+4. **Railway Shutdown**
+   - Verify Vercel + Supabase deployment is stable
+   - Export final data backup from Railway
+   - Document Railway shutdown procedures
+   - Remove Railway project and services
+   - Update all external references to Railway URLs
+
+**Deliverables:**
+- Fully functional application on Vercel + Supabase
+- Verified production deployment
+- Complete Railway shutdown
+- Migration success documentation
+
+**Migration Success Criteria:**
+- All functionality works identically to Railway deployment
+- Performance is equal to or better than Railway
+- Zero data loss during migration
+- Development velocity improved (no more Railway debugging)
+- Reliable deployment process with Vercel + Supabase
+
+**Deliverables:**
+- Complete platform migration from Railway to Vercel + Supabase
+- Improved development velocity and reliability
+- Updated documentation and configuration
+- Production-ready application on new platform
+
 ## 3. Simplified Technical Architecture
 
 ### 3.1 MVP Stack
 - **Frontend**: Next.js + TypeScript + Tailwind CSS
 - **Backend**: Python + FastAPI + SQLAlchemy
-- **Database**: PostgreSQL (Railway)
-- **Deployment**: Railway (simple git push)
+- **Database**: PostgreSQL (Supabase)
+- **Deployment**: Vercel (simple git push)
 - **Maps**: Mapbox or Google Maps API (future enhancement)
 - **Charts**: Chart.js or Recharts
 
-### 3.2 Railway Deployment Architecture
+### 3.2 Vercel + Supabase Deployment Architecture
 ```
 GitHub Repository
        ↓
-   Railway.app
+   Vercel.app
        ↓
 ┌─────────────────┐
 │   Frontend      │  Next.js app
-│   (Railway)     │
+│   (Vercel)      │
 └─────────────────┘
        ↓
 ┌─────────────────┐
-│   Backend       │  FastAPI app
-│   (Railway)     │
+│   Backend       │  FastAPI serverless functions
+│   (Vercel)      │
 └─────────────────┘
        ↓
 ┌─────────────────┐
-│   PostgreSQL    │  Railway database
-│   (Railway)     │
+│   PostgreSQL    │  Supabase database
+│   (Supabase)    │
 └─────────────────┘
 ```
 
@@ -599,57 +810,58 @@ POST /api/calculate - Submit calculation parameters
 GET /api/health - Health check
 ```
 
-## 4. Railway Deployment Guide
+## 4. Vercel + Supabase Deployment Guide
 
 ### 4.1 Initial Setup
-1. **Create Railway Account**
-   - Sign up at railway.app
+1. **Create Vercel Account**
+   - Sign up at vercel.com
    - Connect GitHub repository
    - Create new project
 
-2. **Add Services**
-   - Add PostgreSQL service for database
-   - Add Python service for backend
-   - Add Node.js service for frontend
+2. **Create Supabase Account**
+   - Sign up at supabase.com
+   - Create new project
+   - Get connection string from dashboard
 
 3. **Configure Environment Variables**
-   - Set DATABASE_URL for PostgreSQL connection
+   - Set DATABASE_URL for Supabase PostgreSQL connection
    - Set API keys and secrets
    - Configure production settings
 
 ### 4.2 Deployment Process
 1. **Backend Deployment**
    ```bash
-   # Deploy backend to Railway
+   # Deploy backend to Vercel
    git add .
-   git commit -m "feat(backend): deploy to Railway"
+   git commit -m "feat(backend): deploy to Vercel"
    git push origin main
    ```
 
 2. **Frontend Deployment**
-   - Railway automatically detects Next.js
-   - Configure build settings in Railway dashboard
+   - Vercel automatically detects Next.js
+   - Configure build settings in Vercel dashboard
    - Set environment variables for API endpoints
 
 3. **Database Setup**
-   - Run migrations on Railway PostgreSQL
+   - Run migrations on Supabase PostgreSQL
    - Load initial data
    - Verify connections
 
-### 4.3 Railway-Specific Considerations
-- **Auto-deployment**: Railway deploys on git push
-- **Environment variables**: Set in Railway dashboard
-- **Domains**: Railway provides custom domains
-- **Scaling**: Railway handles basic scaling automatically
+### 4.3 Vercel + Supabase-Specific Considerations
+- **Auto-deployment**: Vercel deploys on git push
+- **Environment variables**: Set in Vercel dashboard
+- **Domains**: Vercel provides custom domains
+- **Scaling**: Vercel handles basic scaling automatically
 - **Monitoring**: Basic monitoring included
+- **Database**: Supabase provides managed PostgreSQL with real-time features
 
 ## 5. MVP Risk Mitigation
 
 ### 5.1 Technical Risks
 - **Data Processing**: Start with smaller dataset (3 months)
 - **Performance**: Use simple probability model initially
-- **Deployment**: Railway handles most complexity
-- **Database**: Railway PostgreSQL is managed and reliable
+- **Deployment**: Vercel handles most complexity
+- **Database**: Supabase PostgreSQL is managed and reliable
 
 ### 5.2 Business Risks
 - **User Adoption**: Focus on core functionality
@@ -658,7 +870,7 @@ GET /api/health - Health check
 ## 6. MVP Success Criteria
 
 ### 6.1 Technical Success
-- Application runs without errors on Railway
+- Application runs without errors on Vercel + Supabase
 - Probability calculations work correctly
 - Users can input parameters and see results
 - Simple deployment process works reliably
@@ -736,7 +948,7 @@ GET /api/health - Health check
    - Complete user journey from station selection to results
    - Data flows correctly between frontend and backend
    - Real CitiBike data is used in calculations
-   - Application works in production environment on Railway
+   - Application works in production environment on Vercel + Supabase
 
 2. **Performance Tests**
    - Application loads within acceptable time limits
@@ -751,4 +963,4 @@ GET /api/health - Health check
 - **Simple Automation**: Basic test scripts (no complex CI/CD for MVP)
 - **Coverage**: Aim for 80%+ code coverage on critical paths
 
-This simplified MVP approach focuses on getting a working application quickly with minimal infrastructure complexity. Railway provides a simple deployment platform that eliminates the need for complex AWS setup, CI/CD pipelines, or advanced monitoring systems. The deployment process is as simple as pushing to git, making it ideal for rapid development and iteration. 
+This simplified MVP approach focuses on getting a working application quickly with minimal infrastructure complexity. Vercel + Supabase provides a simple deployment platform that eliminates the need for complex AWS setup, CI/CD pipelines, or advanced monitoring systems. The deployment process is as simple as pushing to git, making it ideal for rapid development and iteration. 
